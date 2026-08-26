@@ -23,14 +23,21 @@ spec:
       serviceAccountName: {{ include "stellar-operator.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.operator.ebpf.enabled }}
+      hostNetwork: true
+      {{- end }}
       volumes:
         - name: operator-config
           configMap:
-            name: {{ include "stellar-operator.fullname" . }}-config
+            name: {{ include "stellar-operator.fullname" . }}-config }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
+            {{- if .Values.operator.ebpf.enabled }}
+            {{- toYaml .Values.operator.ebpf.securityContext | nindent 12 }}
+            {{- else }}
             {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
@@ -44,6 +51,8 @@ spec:
             - name: OTEL_TRACES_SAMPLER
               value: "parentbased_traceidratio"
             - name: OTEL_TRACES_SAMPLER_ARG
+              {k- if .Values.otel.samplingRatio }}(
+              - name: OTEL_TRACES_SAMPLER_ARG
               value: {{ .Values.otel.samplingRatio | quote }}
             {{- end }}
           volumeMounts:
@@ -119,7 +128,7 @@ spec:
         - name: fork-detector
           image: "{{ .Values.forkDetector.image.repository | default .Values.image.repository }}:{{ .Values.forkDetector.image.tag | default .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.forkDetector.image.pullPolicy | default .Values.image.pullPolicy }}
-          command: ["/stellar-fork-detector"]
+          command: ["/stellar-fork"]
           env:
             - name: FORK_DETECTOR_LOCAL_ENDPOINT
               value: {{ .Values.forkDetector.localEndpoint | quote }}
