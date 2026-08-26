@@ -60,7 +60,7 @@ rules:
     resources: ["configmaps"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
+    resources: ["persistentvolumclaims"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
     resources: ["secrets"]
@@ -74,7 +74,7 @@ rules:
     resources: ["statefulsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-  # NetworkPolicy — operator creates per-node isolation policies.
+  # NetworkPolicy - operator creates per-node isolation policies.
   # Scoped to the watch namespace (or cluster-wide when watchNamespace is unset).
   # The operator NEVER reads NetworkPolicies from other namespaces.
   - apiGroups: ["networking.k8s.io"]
@@ -120,8 +120,8 @@ subjects:
     namespace: {{ .Release.Namespace }}
 
 ---
-# Namespace-reader ClusterRole — grants the operator read-only access to
-# Namespace objects so the network safety check (SK8S-021) can verify the
+# Namespace-reader ClusterRole - grants the operator read-only access to
+# Namespace objects so the network safety check (SG8KS-021) can verify the
 # stellar.org/network label on the namespace hosting a StellarNode.
 #
 # This is intentionally a separate, minimal ClusterRole so that teams running
@@ -149,6 +149,41 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: {{ include "stellar-operator.fullname" . }}-namespace-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "stellar-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+
+---
+# Node-reader ClusterRole - grants the operator read-only access to Node
+# objects so the eBPF network telemetry collector can map IP addresses to
+# Kubernetes Pod identities across nodes.
+#
+# This is intentionally a separate, minimal ClusterRole so that teams running
+# the operator with namespace-scoped RBAC (watchNamespace set) can grant only
+# this narrow cluster-level permission without elevating the main Role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
 subjects:
   - kind: ServiceAccount
     name: {{ include "stellar-operator.serviceAccountName" . }}
