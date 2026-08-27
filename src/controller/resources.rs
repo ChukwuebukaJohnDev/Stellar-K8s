@@ -697,7 +697,13 @@ fn build_deployment(node: &StellarNode, enable_mtls: bool) -> Deployment {
                 ..Default::default()
             },
             // Deployments (Horizon/SorobanRpc) never need seed injection → pass None
-            template: build_pod_template(node, &labels, enable_mtls, None),
+            template: build_pod_template(
+                node,
+                &labels,
+                enable_mtls,
+                None,
+                node.spec.pod_anti_affinity.clone(),
+            ),
             ..Default::default()
         }),
         status: None,
@@ -733,8 +739,25 @@ pub async fn ensure_statefulset(
         Err(e) => return Err(Error::KubeError(e)),
     };
 
-    // *** Pass seed_injection down to the builder ***
-    let mut statefulset = build_statefulset(node, enable_mtls, seed_injection);
+    // Resolve effective anti-affinity strength against real cluster zone
+    // topology, downgrading Hard -> Soft when strict placement is
+    // unsatisfiable (e.g. single-zone/single-node dev clusters).
+    let requested_strength = node.spec.pod_anti_affinity.clone();
+    let effective_strength = if requested_strength == PodAntiAffinityStrength::Hard {
+        let zone_topology = crate::controller::topology::fetch_zone_topology(client).await?;
+        let sibling_count =
+            crate::controller::topology::count_sibling_nodes(client, &node.spec).await?;
+        crate::controller::topology::resolve_anti_affinity_strength(
+            requested_strength,
+            &zone_topology,
+            sibling_count,
+        )
+    } else {
+        requested_strength
+    };
+
+    // *** Pass seed_injection and resolved anti-affinity strength down to the builder ***
+    let mut statefulset = build_statefulset(node, enable_mtls, seed_injection, effective_strength);
 
     // Apply label propagation: merge propagated labels, then remove stale ones
     let base_labels = statefulset.metadata.labels.clone().unwrap_or_default();
@@ -749,11 +772,12 @@ pub async fn ensure_statefulset(
     Ok(())
 }
 
-// *** seed_injection added as parameter ***
+// *** seed_injection and resolved anti-affinity strength added as parameters ***
 fn build_statefulset(
     node: &StellarNode,
     enable_mtls: bool,
     seed_injection: Option<&kms_secret::SeedInjectionSpec>,
+    effective_anti_affinity: PodAntiAffinityStrength,
 ) -> StatefulSet {
     let labels = standard_labels(node);
     let name = node.name_any();
@@ -793,8 +817,14 @@ fn build_statefulset(
                 ..Default::default()
             },
             service_name: format!("{name}-headless"),
-            // *** Pass seed_injection into pod template builder ***
-            template: build_pod_template(node, &labels, enable_mtls, seed_injection),
+            // *** Pass seed_injection and resolved anti-affinity strength into pod template builder ***
+            template: build_pod_template(
+                node,
+                &labels,
+                enable_mtls,
+                seed_injection,
+                effective_anti_affinity.clone(),
+            ),
             ..Default::default()
         }),
         status: None,
@@ -994,7 +1024,7 @@ fn build_service(node: &StellarNode, enable_mtls: bool) -> Service {
                 target_port,
                 ..Default::default()
             }]
-        },
+        }
     };
 
     Service {
@@ -1698,6 +1728,7 @@ fn build_pod_template(
     enable_mtls: bool,
     // *** NEW PARAMETER ***
     seed_injection: Option<&kms_secret::SeedInjectionSpec>,
+    effective_anti_affinity: PodAntiAffinityStrength,
 ) -> PodTemplateSpec {
     let mut pod_spec = PodSpec {
         containers: vec![build_container(node, enable_mtls)],
@@ -1724,8 +1755,9 @@ fn build_pod_template(
         topology_spread_constraints: Some(build_topology_spread_constraints(
             &node.spec,
             &node.name_any(),
+            effective_anti_affinity.clone(),
         )),
-        affinity: merge_workload_affinity(node),
+        affinity: merge_workload_affinity(node, effective_anti_affinity.clone()),
         security_context: Some(PodSecurityContext {
             run_as_non_root: Some(true),
             run_as_user: Some(10000),
@@ -2439,7 +2471,10 @@ fn network_spread_label_selector(spec: &StellarNodeSpec) -> LabelSelector {
     }
 }
 
-pub(crate) fn merge_workload_affinity(node: &StellarNode) -> Option<Affinity> {
+pub(crate) fn merge_workload_affinity(
+    node: &StellarNode,
+    effective_anti_affinity: PodAntiAffinityStrength,
+) -> Option<Affinity> {
     let mut aff = Affinity::default();
     if let Some(na) = node.spec.storage.node_affinity.clone() {
         aff.node_affinity = Some(na);
@@ -2458,7 +2493,7 @@ pub(crate) fn merge_workload_affinity(node: &StellarNode) -> Option<Affinity> {
     let mut pref_terms = Vec::new();
 
     // 1. Default network-level separation
-    if let Some(pa) = build_network_pod_anti_affinity(node) {
+    if let Some(pa) = build_network_pod_anti_affinity(node, effective_anti_affinity.clone()) {
         if let Some(mut req) = pa.required_during_scheduling_ignored_during_execution {
             req_terms.append(&mut req);
         }
@@ -2543,8 +2578,11 @@ fn build_scp_aware_pod_anti_affinity(node: &StellarNode) -> Option<PodAntiAffini
     })
 }
 
-fn build_network_pod_anti_affinity(node: &StellarNode) -> Option<PodAntiAffinity> {
-    match node.spec.pod_anti_affinity {
+fn build_network_pod_anti_affinity(
+    node: &StellarNode,
+    effective_anti_affinity: PodAntiAffinityStrength,
+) -> Option<PodAntiAffinity> {
+    match effective_anti_affinity {
         PodAntiAffinityStrength::Disabled => None,
         PodAntiAffinityStrength::Hard => {
             let term = PodAffinityTerm {
@@ -2580,6 +2618,7 @@ fn build_network_pod_anti_affinity(node: &StellarNode) -> Option<PodAntiAffinity
 pub fn build_topology_spread_constraints(
     spec: &crate::crd::StellarNodeSpec,
     _node_name: &str,
+    effective_anti_affinity: PodAntiAffinityStrength,
 ) -> Vec<k8s_openapi::api::core::v1::TopologySpreadConstraint> {
     use k8s_openapi::api::core::v1::TopologySpreadConstraint;
 
@@ -2589,7 +2628,7 @@ pub fn build_topology_spread_constraints(
         }
     }
 
-    let when_unsatisfiable = match spec.pod_anti_affinity {
+    let when_unsatisfiable = match effective_anti_affinity {
         PodAntiAffinityStrength::Soft => "ScheduleAnyway".to_string(),
         PodAntiAffinityStrength::Hard | PodAntiAffinityStrength::Disabled => {
             "DoNotSchedule".to_string()
@@ -4136,7 +4175,7 @@ pub(crate) fn build_deployment_for_test(
 pub(crate) fn build_statefulset_for_test(
     node: &StellarNode,
 ) -> k8s_openapi::api::apps::v1::StatefulSet {
-    build_statefulset(node, false, None)
+    build_statefulset(node, false, None, node.spec.pod_anti_affinity.clone())
 }
 
 #[cfg(test)]
@@ -4146,7 +4185,13 @@ pub(crate) fn build_service_for_test(node: &StellarNode) -> k8s_openapi::api::co
 
 #[cfg(test)]
 pub(crate) fn build_pod_template_for_test(node: &StellarNode) -> PodTemplateSpec {
-    build_pod_template(node, &standard_labels(node), false, None)
+    build_pod_template(
+        node,
+        &standard_labels(node),
+        false,
+        None,
+        node.spec.pod_anti_affinity.clone(),
+    )
 }
 
 #[cfg(test)]

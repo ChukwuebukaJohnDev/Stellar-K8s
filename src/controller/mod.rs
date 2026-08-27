@@ -48,6 +48,7 @@
 //! - Cleans up associated resources (Services, ConfigMaps, etc.)
 //! - Removes finalizer only after successful cleanup
 
+//!
 pub mod benchmark;
 pub mod blue_green;
 pub mod canary;
@@ -62,6 +63,7 @@ pub mod network_isolation;
 pub mod predictive_scaling;
 pub mod pss;
 pub mod resource_meta;
+pub(crate) mod topology;
 
 pub(crate) mod archive_health;
 pub mod archive_prune;
