@@ -485,6 +485,32 @@ pub struct SnapshotScheduleConfig {
     pub encryption_key_ref: Option<String>,
 }
 
+/// Configuration for pre-upgrade PVC backup snapshots.
+///
+/// When set on a Validator node, the controller creates a CSI `VolumeSnapshot`
+/// before updating the StatefulSet image and waits for the snapshot to become
+/// `ReadyToUse` before allowing the rollout to continue.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupConfig {
+    /// VolumeSnapshotClass name. If unset, the default class for the PVC's driver is used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume_snapshot_class_name: Option<String>,
+    /// If true, the operator will attempt to flush/lock the Stellar database briefly before creating the snapshot.
+    #[serde(default)]
+    pub flush_before_snapshot: bool,
+    /// Maximum time in seconds to wait for the snapshot to become ReadyToUse before failing the upgrade.
+    #[serde(default = "default_backup_ready_timeout_seconds")]
+    pub ready_timeout_seconds: u64,
+    /// Reference to a Cloud KMS key for encrypting the snapshot.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub encryption_key_ref: Option<String>,
+}
+
+fn default_backup_ready_timeout_seconds() -> u64 {
+    300
+}
+
 /// Configuration to bootstrap a new node from an existing CSI VolumeSnapshot
 ///
 /// When set, the node's PVC is created from the specified VolumeSnapshot instead of

@@ -12,8 +12,8 @@ mod tests {
     use super::super::reconciler::*;
     use crate::controller::{AuditLog, JobRegistry};
     use crate::crd::{
-        CaptiveCoreConfig, Condition, HorizonConfig, ManagedDatabaseConfig, NodeType,
-        ResourceRequirements, ResourceSpec, SorobanConfig, StellarNetwork, StellarNode,
+        BackupConfig, CaptiveCoreConfig, Condition, HorizonConfig, ManagedDatabaseConfig,
+        NodeType, ResourceRequirements, ResourceSpec, SorobanConfig, StellarNetwork, StellarNode,
         StellarNodeSpec, StorageConfig, ValidatorConfig,
     };
     use crate::error::Error;
@@ -539,6 +539,39 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
             soroban.spec.validate().is_ok(),
             "Valid soroban config should pass"
         );
+    }
+
+    #[test]
+    fn test_backup_config_is_validator_only() {
+        let mut validator = create_test_validator_node("test-validator", "default");
+        validator.spec.backup_config = Some(BackupConfig {
+            volume_snapshot_class_name: Some("csi-fast".to_string()),
+            flush_before_snapshot: true,
+            ready_timeout_seconds: 120,
+            encryption_key_ref: Some("kms-key".to_string()),
+        });
+
+        assert!(
+            validator.spec.validate().is_ok(),
+            "Validator backupConfig should be valid"
+        );
+
+        let mut horizon = create_test_horizon_node("test-horizon", "default");
+        horizon.spec.backup_config = Some(BackupConfig::default());
+
+        assert!(
+            horizon.spec.validate().is_err(),
+            "backupConfig must be rejected for non-Validator nodes"
+        );
+    }
+
+    #[test]
+    fn test_pre_upgrade_snapshot_name_is_sanitized() {
+        let node = create_test_validator_node("validator-a", "default");
+        let snapshot_name = build_pre_upgrade_snapshot_name(&node, "v22.0.1+build.5");
+
+        assert!(snapshot_name.starts_with("validator-a-upgrade-v22-0-1-build-5-"));
+        assert!(snapshot_name.len() <= 253);
     }
 
     /// Test that suspended nodes have 0 replicas
