@@ -84,19 +84,29 @@ impl CacheConfig {
     /// Reject unsafe or unusable limits before the cache is constructed.
     pub fn validate(&self) -> Result<(), CacheError> {
         if self.ttl_secs == 0 {
-            return Err(CacheError::InvalidConfig("ttl_secs must be greater than zero"));
+            return Err(CacheError::InvalidConfig(
+                "ttl_secs must be greater than zero",
+            ));
         }
         if self.max_entries == 0 {
-            return Err(CacheError::InvalidConfig("max_entries must be greater than zero"));
+            return Err(CacheError::InvalidConfig(
+                "max_entries must be greater than zero",
+            ));
         }
         if self.max_bytes == 0 {
-            return Err(CacheError::InvalidConfig("max_bytes must be greater than zero"));
+            return Err(CacheError::InvalidConfig(
+                "max_bytes must be greater than zero",
+            ));
         }
         if self.max_entries > MAX_CACHE_ENTRIES {
-            return Err(CacheError::InvalidConfig("max_entries exceeds the sandbox limit"));
+            return Err(CacheError::InvalidConfig(
+                "max_entries exceeds the sandbox limit",
+            ));
         }
         if self.max_bytes > MAX_CACHE_BYTES {
-            return Err(CacheError::InvalidConfig("max_bytes exceeds the sandbox limit"));
+            return Err(CacheError::InvalidConfig(
+                "max_bytes exceeds the sandbox limit",
+            ));
         }
         Ok(())
     }

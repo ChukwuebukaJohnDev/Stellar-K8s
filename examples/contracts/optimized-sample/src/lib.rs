@@ -70,9 +70,7 @@ impl OptimizedSample {
                 label: symbol_short!("bench"),
             });
         state.counter = state.counter.saturating_add(1);
-        env.storage()
-            .persistent()
-            .set(&DataKey::Monolithic, &state);
+        env.storage().persistent().set(&DataKey::Monolithic, &state);
         state.counter
     }
 
