@@ -333,4 +333,5 @@ on it) and need to stop it from fighting a legitimate multi-hour resync:
 - [`src/kubectl_plugin.rs`](../../src/kubectl_plugin.rs) — full `kubectl stellar` command surface
 - [DR Failover Guide](../dr-failover.md) — cross-region/cross-cluster failover (a different scope from this runbook)
 - [Volume Snapshots](../volume-snapshots.md) — snapshot-based restore as an alternative to a full PVC wipe
+- [Backup Verification Automation](backup-verification.md) — nightly isolated restore tests
 - [Resource Limits for Stellar Node Types](../resource-limits.md)
