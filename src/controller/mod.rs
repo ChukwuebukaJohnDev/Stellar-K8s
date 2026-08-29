@@ -50,6 +50,7 @@
 
 pub mod benchmark;
 pub mod blue_green;
+pub mod topology;
 pub mod canary;
 pub mod cross_cloud_failover;
 pub mod feature_flags;
@@ -190,4 +191,11 @@ pub use service_mesh::{
 pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
     DeliveryRecord, WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
+};
+
+// Topology enforcement (issue #115)
+pub use topology::{
+    build_statefulset_patch, discover_cluster_topology, enforce_namespace, enforce_on_statefulset,
+    ClusterTopology, EnforcementResult, TopologyMode, TopologyRuleSet, TopologySpreadConstraint,
+    WhenUnsatisfiable,
 };

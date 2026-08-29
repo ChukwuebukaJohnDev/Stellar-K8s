@@ -67,6 +67,7 @@ pub mod backup;
 pub mod benchmark_compare;
 pub mod byzantine;
 pub mod carbon_aware;
+pub mod contracts;
 pub mod controller;
 pub mod crd;
 pub mod error;
