@@ -1,6 +1,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
+import QuorumMatrixScene from './QuorumMatrixScene.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
 import './styles.css';
 
@@ -21,6 +22,7 @@ function App() {
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
+  const [matrixCell, setMatrixCell] = useState(null);
   const [paused, setPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const streamStateRef = useRef(createStreamState());
@@ -112,6 +114,12 @@ function App() {
         <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
       </section>
 
+      <section className="matrix-panel" aria-label="Quorum intersection matrix">
+        <div className="panel-heading"><div><strong>Quorum intersection matrix</strong><span className="muted">{graph.nodes.length > 200 ? 'First 200 validators' : `${graph.nodes.length} validators`}</span></div><span className="muted">Agreement × overlap</span></div>
+        <QuorumMatrixScene snapshot={graph} onInspect={setMatrixCell} selectedCell={matrixCell} />
+        <MatrixInspector cell={matrixCell} />
+      </section>
+
       <section className="workspace">
         <div className="graph-panel">
           <div className="panel-heading">
@@ -149,6 +157,11 @@ function Legend({ color, label }) {
 
 function EmptyInspector() {
   return <div className="empty-inspector"><div className="empty-icon">+</div><h2>Select a validator</h2><p>Validator metrics will appear here.</p></div>;
+}
+
+function MatrixInspector({ cell }) {
+  if (!cell) return <div className="matrix-inspector muted">Hover or click a matrix cell to inspect validator agreement and shared quorum dependencies.</div>;
+  return <div className="matrix-inspector"><strong>{cell.source.name} ↔ {cell.target.name}</strong><span>{(cell.agreement * 100).toFixed(1)}% effective agreement · {cell.overlapCount} shared dependencies</span>{cell.commonDependencies.length > 0 && <code>{cell.commonDependencies.join(', ')}</code>}</div>;
 }
 
 function NodeInspector({ node }) {
