@@ -1,6 +1,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
+import ResourceHeatmap from './heatmap/ResourceHeatmap.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
 import './styles.css';
 
@@ -9,6 +10,8 @@ const query = new URLSearchParams(window.location.search);
 const sourceFromQuery = query.get('source');
 const bridgeUrl = query.get('ws') || 'localhost:8787';
 const initialSource = sourceFromQuery === 'mock' || sourceFromQuery === 'kafka' ? sourceFromQuery : 'live';
+const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
+const prometheusEndpoint = query.get('prom') || '/api/v1/query';
 
 function streamUrl(source) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -18,6 +21,7 @@ function streamUrl(source) {
 
 function App() {
   const [source, setSource] = useState(initialSource);
+  const [view, setView] = useState(initialView);
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
@@ -90,51 +94,82 @@ function App() {
           <h1>Network topology</h1>
           <p>Multi-cluster quorum health.</p>
         </div>
-        <div className="toolbar" role="toolbar" aria-label="Topology controls">
-          <label className="select-wrap">
-            <span>Data source</span>
-            <select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="live">Live operator stream</option>
-              <option value="kafka">Kafka WebSocket bridge</option>
-              <option value="mock">Mock Kafka stream</option>
-            </select>
-          </label>
-          <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-            {paused ? 'Resume motion' : 'Pause motion'}
-          </button>
+        <div className="toolbar" role="toolbar" aria-label="Visualization controls">
+          <div className="segmented" role="group" aria-label="Visualization">
+            <button type="button" className={view === 'topology' ? 'active' : ''} onClick={() => setView('topology')}>
+              Topology
+            </button>
+            <button type="button" className={view === 'heatmap' ? 'active' : ''} onClick={() => setView('heatmap')}>
+              Saturation
+            </button>
+          </div>
+          {view === 'topology' ? (
+            <>
+              <label className="select-wrap">
+                <span>Data source</span>
+                <select value={source} onChange={(event) => setSource(event.target.value)}>
+                  <option value="live">Live operator stream</option>
+                  <option value="kafka">Kafka WebSocket bridge</option>
+                  <option value="mock">Mock Kafka stream</option>
+                </select>
+              </label>
+              <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
+                {paused ? 'Resume motion' : 'Pause motion'}
+              </button>
+            </>
+          ) : null}
         </div>
       </header>
 
-      <section className="metric-strip" aria-label="Network summary">
-        <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
-        <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
-        <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
-        <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
-      </section>
+      {view === 'topology' ? (
+        <>
+          <section className="metric-strip" aria-label="Network summary">
+            <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
+            <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
+            <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
+            <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
+          </section>
 
-      <section className="workspace">
-        <div className="graph-panel">
-          <div className="panel-heading">
-            <div>
-              <span className={`status-dot ${connection}`} />
-              <strong>{sourceLabel}</strong>
-              <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
+          <section className="workspace">
+            <div className="graph-panel">
+              <div className="panel-heading">
+                <div>
+                  <span className={`status-dot ${connection}`} />
+                  <strong>{sourceLabel}</strong>
+                  <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
+                </div>
+                <span className="muted">Live graph</span>
+              </div>
+              <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
+              <div className="legend" aria-label="Node health legend">
+                <Legend color="green" label="Synced" />
+                <Legend color="amber" label="Degraded" />
+                <Legend color="red" label="Falling behind" />
+              </div>
             </div>
-            <span className="muted">Live graph</span>
-          </div>
-          <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
-          <div className="legend" aria-label="Node health legend">
-            <Legend color="green" label="Synced" />
-            <Legend color="amber" label="Degraded" />
-            <Legend color="red" label="Falling behind" />
-          </div>
-        </div>
 
-        <aside className="inspector" aria-live="polite">
-          <span className="eyebrow">NODE INSPECTOR</span>
-          {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
-        </aside>
-      </section>
+            <aside className="inspector" aria-live="polite">
+              <span className="eyebrow">NODE INSPECTOR</span>
+              {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
+            </aside>
+          </section>
+        </>
+      ) : (
+        <section className="workspace heatmap-workspace">
+          <div className="graph-panel">
+            <div className="panel-heading">
+              <div>
+                <strong>Worker-node resource saturation</strong>
+                <span className="muted">polling {prometheusEndpoint} every 5s</span>
+              </div>
+              <span className="muted">CPU / memory heatmap</span>
+            </div>
+            <div className="heatmap-host">
+              <ResourceHeatmap endpoint={prometheusEndpoint} pollIntervalMs={5000} />
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 }

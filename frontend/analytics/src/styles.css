@@ -39,3 +39,38 @@ select, .tool-button { min-height: 38px; border: 1px solid #344350; border-radiu
 .detail-list { margin: 0; border-top: 1px solid #273340; }.detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #273340; }.detail-row dt { color: #91a0ad; font-size: 12px; }.detail-row dd { margin: 0; color: #e8edf2; font: 12px 'DM Mono', monospace; text-align: right; }.inspector-note { margin-top: 18px; padding: 12px; border-left: 2px solid #f5b942; color: #aebbc6; font-size: 12px; line-height: 1.5; }
 @media (max-width: 900px) { .app-shell { padding: 22px 18px 32px; }.topbar { align-items: flex-start; flex-direction: column; }.toolbar { width: 100%; align-items: stretch; }.select-wrap { flex: 1; }.workspace { grid-template-columns: 1fr; }.inspector { min-height: 260px; }.empty-inspector { padding-top: 30px; }.scene-host { height: 58vh; min-height: 360px; } }
 @media (max-width: 560px) { .metric-strip { grid-template-columns: repeat(2, 1fr); }.metric { padding: 16px 8px 16px 0; margin-right: 8px; }.metric strong { font-size: 21px; }.panel-heading { align-items: flex-start; flex-direction: column; justify-content: center; }.toolbar { flex-direction: column; }.scene-host { min-height: 320px; } }
+
+/* Resource saturation heatmap */
+.segmented { display: inline-flex; border: 1px solid #344350; border-radius: 6px; overflow: hidden; }
+.segmented button { min-height: 38px; padding: 0 14px; border: 0; background: #121c26; color: #91a0ad; }
+.segmented button + button { border-left: 1px solid #344350; }
+.segmented button.active { background: #1b2a38; color: #a9f0ce; }
+.heatmap-workspace { grid-template-columns: minmax(0, 1fr); }
+.heatmap-host { padding: 16px; }
+.heatmap { display: grid; gap: 14px; }
+.heatmap-toprow { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.heatmap-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+.heatmap-stat { display: grid; gap: 4px; }
+.heatmap-stat-label { color: #91a0ad; font-size: 11px; }
+.heatmap-stat strong { font: 500 18px 'DM Mono', monospace; }
+.heatmap-scale { display: flex; align-items: center; gap: 8px; color: #7f92a3; font-size: 11px; }
+.heatmap-scale-ramp { width: 140px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #2563eb, #14b8a6, #a3bf3f, #eab308, #f97316, #dc2626); }
+.heatmap-scroll { overflow-x: auto; padding-bottom: 4px; }
+.heatmap-grid { display: block; }
+.heatmap-zone-label { fill: #91a0ad; font: 500 11px 'DM Mono', monospace; }
+.heatmap-cell { transition: fill-opacity 120ms linear; cursor: pointer; }
+.heatmap-cell:focus { outline: 2px solid #a9f0ce; outline-offset: 1px; }
+.heatmap-legend { display: flex; gap: 16px; flex-wrap: wrap; color: #aebbc6; font-size: 11px; }
+.heatmap-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.heatmap-legend-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.heatmap-legend-swatch.level-idle { background: #2563eb; }
+.heatmap-legend-swatch.level-cool { background: #14b8a6; }
+.heatmap-legend-swatch.level-warm { background: #eab308; }
+.heatmap-legend-swatch.level-hot { background: #f97316; }
+.heatmap-legend-swatch.level-critical { background: #dc2626; }
+.heatmap-error { margin: 0; padding: 8px 12px; border-left: 2px solid #f05d5e; color: #f5b942; font-size: 12px; }
+.heatmap-empty { margin: 0; padding: 40px 12px; color: #91a0ad; font-size: 13px; }
+.heatmap-inspect { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; padding: 12px; border: 1px solid #273340; border-radius: 6px; background: #0d1620; }
+.heatmap-inspect div { display: grid; gap: 3px; }
+.heatmap-inspect dt { color: #91a0ad; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.heatmap-inspect dd { margin: 0; font: 12px 'DM Mono', monospace; }

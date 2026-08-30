@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/graphModel.test.js",
+    "test": "node --import ./test/register-jsx.mjs --test src/graphModel.test.js src/heatmap/heatmapModel.test.js src/heatmap/ResourceHeatmap.test.jsx",
     "mock:stream": "node scripts/mock-kafka-stream.mjs --serve",
+    "mock:prometheus": "node scripts/mock-prometheus.mjs",
     "stream:kafka": "node scripts/kafka-websocket-bridge.mjs"
   },
   "dependencies": {
@@ -20,5 +21,7 @@
     "ws": "^8.18.0",
     "kafkajs": "^2.2.4"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
 }
