@@ -210,6 +210,17 @@ featureFlags:
   enableArchiveHealth: true
   enableSorobanMetrics: false
 
+# Validator key rotation daemon. Disabled by default; when enabled the operator
+# rotates only Validator seed sources backed by supported external Secret Managers.
+keyRotation:
+  enabled: false
+  intervalSecs: 86400
+  validationWindowSecs: 30
+  validationSampleIntervalSecs: 5
+  minAuthenticatedPeers: 1
+  maxUnhealthySamples: 0
+  rollbackOnFailure: true
+  awsRegion: ""
 
 security:
   audit:

@@ -557,6 +557,21 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
         });
     }
 
+    // Start Validator Key Rotation daemon if explicitly enabled.
+    if state.operator_config.key_rotation.enabled {
+        let daemon = Arc::new(super::security::rotation::KeyRotationDaemon::new(
+            client.clone(),
+            state.watch_namespace.clone(),
+            state.operator_config.key_rotation.clone(),
+            state.job_registry.clone(),
+        ));
+        tokio::spawn(async move {
+            if let Err(e) = daemon.run().await {
+                error!("Validator Key Rotation daemon stopped with error: {}", e);
+            }
+        });
+    }
+
     Controller::new(stellar_nodes, Config::default())
         // Watch owned resources for changes
         .owns::<Deployment>(
