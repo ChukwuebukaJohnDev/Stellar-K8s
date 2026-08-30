@@ -70,6 +70,7 @@ pub mod carbon_aware;
 pub mod controller;
 pub mod crd;
 pub mod error;
+pub mod gateway;
 pub mod fork_detector;
 pub mod incident;
 pub mod infra;
