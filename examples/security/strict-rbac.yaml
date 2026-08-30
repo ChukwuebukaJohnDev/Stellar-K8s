@@ -1,22 +1,24 @@
-# Strict RBAC reference profile for Stellar-K8s.
+# Strict RBAC reference profile for the stock Stellar-K8s `run` command.
 #
 # Assumptions:
-#   * operator namespace: stellar-operator
+#   * operator namespace: stellar-system
 #   * managed workload namespace: stellar
 #   * operator ServiceAccount: stellar-operator
-#   * the operator is started with --watch-namespace=stellar
+#   * operator started with --watch-namespace=stellar
+#   * mTLS, scheduled snapshots, VPA and benchmark execution are disabled unless
+#     their separately reviewed extension permissions are added.
 #
-# Change all three names together if your deployment uses different names.
-# This profile intentionally pre-creates namespaces: the operator is NOT granted
-# cluster-wide namespace creation.
+# The stock binary still performs a small amount of cluster-wide observation
+# from startup/background workers. Those permissions are isolated in the
+# read-only runtime-observer ClusterRole below; no cluster-wide writes are granted.
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: stellar-operator
+  name: stellar-system
   labels:
-    pod-security.kubernetes.io/enforce: restricted
-    pod-security.kubernetes.io/enforce-version: latest
+    # The stock Helm operator pod is not asserted here to satisfy restricted PSS.
+    # Audit/warn surfaces violations without blocking operator startup.
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/audit-version: latest
     pod-security.kubernetes.io/warn: restricted
@@ -40,9 +42,9 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: stellar-operator
-  namespace: stellar-operator
+  namespace: stellar-system
 ---
-# Normal StellarNode reconciliation is namespace-scoped. There are deliberately
+# Primary StellarNode reconciliation is namespace-scoped. There are deliberately
 # no RBAC wildcards and no write verbs for Secret resources.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -60,7 +62,6 @@ rules:
     resources: ["stellarnodes/finalizers"]
     verbs: ["update"]
 
-  # Workloads created and garbage-collected by StellarNode reconciliation.
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -68,8 +69,6 @@ rules:
     resources: ["services", "configmaps", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-  # Pods are observed for health/remediation. Ephemeral-container mutation is
-  # isolated to its subresource for the forensic snapshot feature.
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch", "update", "patch", "delete"]
@@ -80,14 +79,11 @@ rules:
     resources: ["pods/ephemeralcontainers"]
     verbs: ["get", "update", "patch"]
 
-  # Validator seed values remain owned by Kubernetes/ESO/Vault/CSI. The
-  # Stellar-K8s ServiceAccount can discover Secret objects but cannot mutate or
-  # delete them.
+  # Validator seed values remain owned by Kubernetes/ESO/Vault/CSI.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
 
-  # Network isolation, availability, ingress and autoscaling child resources.
   - apiGroups: ["networking.k8s.io"]
     resources: ["networkpolicies", "ingresses"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -98,19 +94,20 @@ rules:
     resources: ["horizontalpodautoscalers"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-  # External Secrets Operator path used by seedSecretSource.externalRef. The
-  # operator applies/reads the ExternalSecret object; ESO, under its own SA,
-  # writes the target Kubernetes Secret.
+  # `delete_vpa()` runs when vpaConfig is absent if the VPA CRD is installed.
+  # Patch enables the opt-in VPA path; delete is required by the default cleanup path.
+  - apiGroups: ["autoscaling.k8s.io"]
+    resources: ["verticalpodautoscalers"]
+    verbs: ["get", "patch", "delete"]
+
   - apiGroups: ["external-secrets.io"]
     resources: ["externalsecrets"]
-    verbs: ["get", "create", "patch"]
+    verbs: ["get", "patch"]
 
-  # Optional CloudNativePG managed database resources. Still namespace-scoped.
   - apiGroups: ["postgresql.cnpg.io"]
     resources: ["clusters", "poolers"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
-  # Events emitted against managed objects.
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["create", "patch"]
@@ -127,58 +124,104 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: stellar-operator
-    namespace: stellar-operator
+    namespace: stellar-system
 ---
-# Leader election belongs in the operator namespace, not the workload namespace.
+# Startup preflight, feature-flag watching, peer ConfigMap publication and leader
+# election all operate in the operator namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: stellar-operator-leader-election
-  namespace: stellar-operator
+  name: stellar-operator-runtime
+  namespace: stellar-system
 rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "patch"]
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
-    verbs: ["get", "create", "update", "patch"]
+    verbs: ["get", "list", "create", "update", "patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: stellar-operator-leader-election
-  namespace: stellar-operator
+  name: stellar-operator-runtime
+  namespace: stellar-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: stellar-operator-leader-election
+  name: stellar-operator-runtime
 subjects:
   - kind: ServiceAccount
     name: stellar-operator
-    namespace: stellar-operator
+    namespace: stellar-system
 ---
-# PSS enforcement calls Api<Namespace>::patch() on every reconcile. Restrict the
-# cluster-scoped permission to the one managed namespace and require operators to
-# pre-create that namespace rather than granting "create namespaces" globally.
+# Stock-binary limitation: run_operator() unconditionally starts preflight,
+# peer-discovery, benchmark watching and the snapshot worker with Api::all().
+# This ClusterRole grants only the cross-namespace READS needed for those loops
+# to start without 403s. It intentionally does not authorize benchmark or
+# snapshot writes outside the managed namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: stellar-operator-managed-namespace
+  name: stellar-operator-runtime-observer
 rules:
+  - apiGroups: ["stellar.org"]
+    resources: ["stellarnodes"]
+    verbs: ["list"]
+  - apiGroups: ["stellar.org"]
+    resources: ["stellarbenchmarks"]
+    verbs: ["list", "watch"]
   - apiGroups: [""]
-    resources: ["namespaces"]
-    resourceNames: ["stellar"]
-    verbs: ["get", "patch"]
+    resources: ["pods"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: stellar-operator-managed-namespace
+  name: stellar-operator-runtime-observer
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: stellar-operator-managed-namespace
+  name: stellar-operator-runtime-observer
 subjects:
   - kind: ServiceAccount
     name: stellar-operator
-    namespace: stellar-operator
+    namespace: stellar-system
+---
+# Startup preflight must read the operator namespace. PSS/network-isolation logic
+# reads and patches the managed namespace. Namespace creation remains denied.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stellar-operator-namespaces
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    resourceNames: ["stellar-system", "stellar"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    resourceNames: ["stellar"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: stellar-operator-namespaces
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: stellar-operator-namespaces
+subjects:
+  - kind: ServiceAccount
+    name: stellar-operator
+    namespace: stellar-system
 ---
 # Local-storage auto-detection probes only these two conventional StorageClass
 # names. Sites that always set spec.storage.storageClass may omit this pair.
@@ -203,4 +246,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: stellar-operator
-    namespace: stellar-operator
+    namespace: stellar-system
