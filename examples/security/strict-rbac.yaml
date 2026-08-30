@@ -1,0 +1,206 @@
+# Strict RBAC reference profile for Stellar-K8s.
+#
+# Assumptions:
+#   * operator namespace: stellar-operator
+#   * managed workload namespace: stellar
+#   * operator ServiceAccount: stellar-operator
+#   * the operator is started with --watch-namespace=stellar
+#
+# Change all three names together if your deployment uses different names.
+# This profile intentionally pre-creates namespaces: the operator is NOT granted
+# cluster-wide namespace creation.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stellar-operator
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: stellar
+  labels:
+    # Change this to mainnet/futurenet/custom-* when appropriate.
+    stellar.org/network: testnet
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: stellar-operator
+  namespace: stellar-operator
+---
+# Normal StellarNode reconciliation is namespace-scoped. There are deliberately
+# no RBAC wildcards and no write verbs for Secret resources.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stellar-operator-managed
+  namespace: stellar
+rules:
+  - apiGroups: ["stellar.org"]
+    resources: ["stellarnodes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: ["stellar.org"]
+    resources: ["stellarnodes/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["stellar.org"]
+    resources: ["stellarnodes/finalizers"]
+    verbs: ["update"]
+
+  # Workloads created and garbage-collected by StellarNode reconciliation.
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Pods are observed for health/remediation. Ephemeral-container mutation is
+  # isolated to its subresource for the forensic snapshot feature.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/ephemeralcontainers"]
+    verbs: ["get", "update", "patch"]
+
+  # Validator seed values remain owned by Kubernetes/ESO/Vault/CSI. The
+  # Stellar-K8s ServiceAccount can discover Secret objects but cannot mutate or
+  # delete them.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+
+  # Network isolation, availability, ingress and autoscaling child resources.
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies", "ingresses"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # External Secrets Operator path used by seedSecretSource.externalRef. The
+  # operator applies/reads the ExternalSecret object; ESO, under its own SA,
+  # writes the target Kubernetes Secret.
+  - apiGroups: ["external-secrets.io"]
+    resources: ["externalsecrets"]
+    verbs: ["get", "create", "patch"]
+
+  # Optional CloudNativePG managed database resources. Still namespace-scoped.
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "poolers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Events emitted against managed objects.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stellar-operator-managed
+  namespace: stellar
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: stellar-operator-managed
+subjects:
+  - kind: ServiceAccount
+    name: stellar-operator
+    namespace: stellar-operator
+---
+# Leader election belongs in the operator namespace, not the workload namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: stellar-operator-leader-election
+  namespace: stellar-operator
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: stellar-operator-leader-election
+  namespace: stellar-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: stellar-operator-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: stellar-operator
+    namespace: stellar-operator
+---
+# PSS enforcement calls Api<Namespace>::patch() on every reconcile. Restrict the
+# cluster-scoped permission to the one managed namespace and require operators to
+# pre-create that namespace rather than granting "create namespaces" globally.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stellar-operator-managed-namespace
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    resourceNames: ["stellar"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: stellar-operator-managed-namespace
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: stellar-operator-managed-namespace
+subjects:
+  - kind: ServiceAccount
+    name: stellar-operator
+    namespace: stellar-operator
+---
+# Local-storage auto-detection probes only these two conventional StorageClass
+# names. Sites that always set spec.storage.storageClass may omit this pair.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: stellar-operator-local-storage-detect
+rules:
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    resourceNames: ["local-path", "local-storage"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: stellar-operator-local-storage-detect
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: stellar-operator-local-storage-detect
+subjects:
+  - kind: ServiceAccount
+    name: stellar-operator
+    namespace: stellar-operator
