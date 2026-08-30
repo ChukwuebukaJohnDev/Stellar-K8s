@@ -118,7 +118,8 @@ pub(crate) mod resources;
 #[cfg(test)]
 mod resources_test;
 pub mod service_mesh;
-mod snapshot;
+mod csi_snapshot;
+pub mod snapshot;
 pub mod snapshot_worker;
 pub mod storage_migration;
 pub(crate) mod sync_scale;
@@ -186,6 +187,9 @@ pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCh
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
+};
+pub use snapshot::{
+    verify_file as snapshot_verify_file, ReconcileOutcome, SnapshotReconcilerConfig, SnapshotRef,
 };
 pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
