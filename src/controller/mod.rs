@@ -70,6 +70,7 @@ pub mod audit_log;
 pub mod audit_sink;
 pub mod audit_worker;
 pub mod background_jobs;
+pub mod captive;
 pub mod captive_core;
 pub mod chaos_engineering;
 pub mod conditions;
@@ -137,6 +138,7 @@ pub use archive_health::{
 };
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
 pub use background_jobs::{JobKind, JobRecord, JobRegistry, JobState, MAX_JOBS};
+pub use captive::{CaptiveCoreProcess, CaptiveCoreSupervisor, SupervisorConfig, SupervisorState};
 pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
     cleanup_blue_deployment, create_green_deployment, rollback_to_blue, run_smoke_tests,
