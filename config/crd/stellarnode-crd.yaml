@@ -368,14 +368,27 @@ spec:
                     format: uint32
                     minimum: 0.0
                     type: integer
+                  enableLedgerPruning:
+                    default: false
+                    description: Prune old ledgers (history_ledgers and dependent history tables) during maintenance. Disabled by default because pruning is destructive.
+                    type: boolean
                   enabled:
                     default: true
                     description: Enable automated database maintenance
                     type: boolean
+                  pruningRetentionDays:
+                    default: 30
+                    description: Retention period for pruned ledgers in days (default: 30). Only used when enableLedgerPruning is true.
+                    format: uint32
+                    minimum: 0.0
+                    type: integer
                   readPoolCoordination:
                     default: true
                     description: Coordination with read-pool for zero-downtime
                     type: boolean
+                  schedule:
+                    description: 'Optional cron expression (6 fields with seconds, e.g., "0 0 2 * * *") that triggers compaction on a fixed schedule. When set, this takes precedence over windowStart/windowDuration.'
+                    type: string
                   windowDuration:
                     description: Maintenance window duration (e.g., "2h")
                     type: string

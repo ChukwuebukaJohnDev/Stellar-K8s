@@ -2188,6 +2188,12 @@ pub struct DbMaintenanceConfig {
     /// Maintenance window duration (e.g., "2h")
     pub window_duration: String,
 
+    /// Optional cron expression (6 fields with seconds, e.g., `"0 0 2 * * *"`)
+    /// that triggers compaction on a fixed schedule. When set, this takes
+    /// precedence over `window_start`/`window_duration`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schedule: Option<String>,
+
     /// Bloat threshold percentage to trigger VACUUM FULL (default: 30)
     #[serde(default = "default_bloat_threshold")]
     pub bloat_threshold_percent: u32,
@@ -2199,9 +2205,23 @@ pub struct DbMaintenanceConfig {
     /// Coordination with read-pool for zero-downtime
     #[serde(default = "default_true")]
     pub read_pool_coordination: bool,
+
+    /// Prune old ledgers (history_ledgers and dependent history tables)
+    /// during maintenance. Disabled by default because pruning is destructive.
+    #[serde(default)]
+    pub enable_ledger_pruning: bool,
+
+    /// Retention period for pruned ledgers in days (default: 30). Only used
+    /// when `enable_ledger_pruning` is true.
+    #[serde(default = "default_pruning_retention_days")]
+    pub pruning_retention_days: u32,
 }
 
 fn default_bloat_threshold() -> u32 {
+    30
+}
+
+fn default_pruning_retention_days() -> u32 {
     30
 }
 
