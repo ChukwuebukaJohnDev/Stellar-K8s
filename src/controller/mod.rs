@@ -123,6 +123,7 @@ pub mod snapshot_worker;
 pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
+pub mod tls;
 pub mod traffic;
 #[cfg(test)]
 mod traffic_test;
