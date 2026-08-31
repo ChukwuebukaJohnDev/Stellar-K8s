@@ -78,6 +78,10 @@ pub enum JobKind {
     CrossClusterCheck,
     /// Webhook delivery retry.
     WebhookDelivery,
+    /// PDB auto-tuning reconcile loop.
+    PdbReconcile,
+    /// PDB sync health check.
+    PdbHealth,
     /// Any other job not covered above.
     Other(String),
 }
@@ -306,6 +310,8 @@ impl JobRegistry {
                         JobKind::BlueGreenRollout => "blue_green_rollout",
                         JobKind::CrossClusterCheck => "cross_cluster_check",
                         JobKind::WebhookDelivery => "webhook_delivery",
+                        JobKind::PdbReconcile => "pdb_reconcile",
+                        JobKind::PdbHealth => "pdb_health",
                         JobKind::Other(s) => s.as_str(),
                     };
                     kind_str == k
