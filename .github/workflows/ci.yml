@@ -106,7 +106,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang
+          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang linux-tools-common linux-tools-generic
+          BPFTOOL="$(find /usr/lib/linux-tools* -name bpftool -type f 2>/dev/null | head -1)"
+          test -n "$BPFTOOL" || { echo "::error::bpftool not found" >&2; exit 1; }
+          sudo ln -sf "$BPFTOOL" /usr/local/bin/bpftool
 
       - name: Verify Cargo.toml and stellar-operator version output
         run: |
@@ -279,7 +282,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y shellcheck libsasl2-dev libcurl4-openssl-dev libbpf-dev clang
+          sudo apt-get install -y shellcheck libsasl2-dev libcurl4-openssl-dev libbpf-dev clang linux-tools-common linux-tools-generic
+          BPFTOOL="$(find /usr/lib/linux-tools* -name bpftool -type f 2>/dev/null | head -1)"
+          test -n "$BPFTOOL" || { echo "::error::bpftool not found" >&2; exit 1; }
+          sudo ln -sf "$BPFTOOL" /usr/local/bin/bpftool
 
       - name: Run shellcheck
         run: |
@@ -321,7 +327,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang
+          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang linux-tools-common linux-tools-generic
+          BPFTOOL="$(find /usr/lib/linux-tools* -name bpftool -type f 2>/dev/null | head -1)"
+          test -n "$BPFTOOL" || { echo "::error::bpftool not found" >&2; exit 1; }
+          sudo ln -sf "$BPFTOOL" /usr/local/bin/bpftool
 
       - name: Run tests (Unit and Doc)
         run: make test
@@ -344,7 +353,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang
+          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang linux-tools-common linux-tools-generic
+          BPFTOOL="$(find /usr/lib/linux-tools* -name bpftool -type f 2>/dev/null | head -1)"
+          test -n "$BPFTOOL" || { echo "::error::bpftool not found" >&2; exit 1; }
+          sudo ln -sf "$BPFTOOL" /usr/local/bin/bpftool
 
       - name: Install tarpaulin
         run: cargo install cargo-tarpaulin
@@ -428,7 +440,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang
+          sudo apt-get install -y libsasl2-dev libcurl4-openssl-dev libbpf-dev clang linux-tools-common linux-tools-generic
+          BPFTOOL="$(find /usr/lib/linux-tools* -name bpftool -type f 2>/dev/null | head -1)"
+          test -n "$BPFTOOL" || { echo "::error::bpftool not found" >&2; exit 1; }
+          sudo ln -sf "$BPFTOOL" /usr/local/bin/bpftool
 
       - name: Build release
         run: make build
