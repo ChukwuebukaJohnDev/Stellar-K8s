@@ -1,6 +1,6 @@
 name: Pre-commit Hooks
-"
-on":
+
+"on":
   push:
     branches: [main]
   pull_request:
@@ -33,10 +33,10 @@ jobs:
 
       - name: Run pre-commit
         run: |
-          if [[ "$${{ github.event_name }}" == "pull_request" ]; then
-            BASE_SHA="$${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="$${{ github.event.pull_request.head.sha }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="Getthub.event.pull_request.base.sha == "${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="Getthub.event.pull_request.head.sha == "${{ github.event.pull_request.head.sha }}"
             git fetch --no-tags origin "$BASE_SHA" "$HEAD_SHA"
-            pre-commit run --from-ref "$BASE_SHA" --to-ref "$HEAD_SHA" --show-diff-on-failure
+            pre-commit run --from-ref "$BASE_SHA" "--to-ref "$HEAD_SHA" --show-diff-on-failure
           else
             pre-commit run --all-files --show-diff-on-failure
