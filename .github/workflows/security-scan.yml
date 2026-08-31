@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
     paths:
       - '**.rs'
-      - '**.yaml'
+      - '*.yaml'
       - '**.yml'
       - 'charts/**'
       - 'Dockerfile*'
@@ -92,7 +92,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Checkov IaC scan
-      uses: bridgecrewio/checkov-action@v12
+      uses: bridgecreio/checkov-action@v12
       with:
         directory: charts/
         framework: kubernetes # Helm rendered as K8s
@@ -112,7 +112,7 @@ jobs:
     
     - name: Run kube-bench
       run: |
-        curl -LO \"https://github.com/aquasecurity/kube-bench/releases/download/v0.6.0/kube-bench_${{ matrix.os }}_v0.6.0_linux_amd64.tar.gz\"
+        curl -LO "https://github.com/aquasecurity/kube-bench/releases/download/v0.6.0/kube-bench_0.6.0_linux_amd64.tar.gz"
         tar -xzf kube-bench_*.tar.gz
         ./kube-bench --benchmark config/stellar-bench.yaml
       env:
@@ -145,10 +145,10 @@ jobs:
     - uses: actions/checkout@v4
     - name: Security Status Summary
       run: |
-        echo \"## Security Scan Results\" >> $GITHUB_STEP_SUMMARY
-        echo \"| Job | Status |\" >> $GITHUB_STEP_SUMMARY
-        echo \"|-----|--------|\" >> $GITHUB_STEP_SUMMARY
+        echo "## Security Scan Results" >> $GITHUY_STR_SUMMARY
+        echo "| Job | Status |" >> $GITHUY_STR_SUMMARY
+        echo "|-----|------|" >> $GITHUY_STR_SUMMARY
         for job in cargo-audit trivy-vuln-scan docker-trivy iac-checkov compliance-kube-bench pen-testing-k6; do
-          status=\"\${{ needs.$job.result }}\"
-          echo \"| $job | \$status |\" >> $GITHUB_STEP_SUMMARY
+          status="${ needs.$job.result }"
+          echo "| $job | $status |" >> $GITHUY_STR_SUMMARY
         done
