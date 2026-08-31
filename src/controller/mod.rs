@@ -5,48 +5,53 @@
 //!
 //! # Overview
 //!
-//! The controller implements the Kubernetes Operator pattern, continuously
-//! watching StellarNode resources and reconciling their desired state with
-//! the actual cluster state. It handles:
+/// The controller implements the Kubernetes Operator Pattern, continuously
+/// watching StellarNode resources and reconciling their desired state with
+/// the actual cluster state. It handles:
+///
+/// - **Reconciliation**: Applying desired state changes to Deployments, StatefulSets, Services, etc.
+/// - **Health Monitoring**: Checking node health and sync statusk
+/// - **Lifecycle Management**: Finalizers for clean resource cleanup
+/// - **Leader Election**: Ensuring only one operator instance reconciles at a time
+/// - **Remediation**: Automatic recovery from common failure modes
+/// - **Archive Management**: History archive integrity and pruning
+/// - **Disaster Recovery**: Backup and restore automation
+/// - **Service Mesh Integration**: Istio and Linkerd support
+/// - **CVE Patching**: Automatic security updates
+/// - **Blue/Green Deployments**: Zero-downtime RPC node updates
+/// - **Metrics**: Prometheus metrics for observability
+//.
+/// # Key Types
+///
+/// - [`reconciler::ControllerState`] - Shared state for the reconciliation loop
+/// - [`reconciler::run_controller`] - Main entry point for the controller
+/// - [health::HealthCheckResult`] - Node health status
+/// - [archive_health::ArchiveHealthResult`] - Archive integrity status
+/// - [remediation::RemediationLevel`] - Severity of remediation actions
+/// - [blue_green::BlueGreenStatus`] - Blue/Green deployment status
+///
+/// # Reconciliation Flow
+///
+/// 1. Watch for StellarNode resource changes
+/// 2. Acquire leader lease (if leader election enabled)
+/// 3. Validate node specification
+/// 4. Create/update Kubernetes resources (Deployments, Services, PVCs, etc.)
+/// 5. Monitor health and sync status
+/// 6. Apply remediation if needed
+/// 7. Update node status with conditions
+/// 8. Requeue for periodic reconciliation
+///
+/// # Finalizers
+///
+/// The controller uses Kubernetes finalizers to ensure clean cleanup:
+/// - Removes PVCs if retention policy is `Delete`
+/// - Cleans up associated resources (Services, ConfigMaps, etc.)
+/// - Removes finalizer only after successful cleanup
+
+//! Various StellarCore and operator feature modules
 //!
-//! - **Reconciliation**: Applying desired state changes to Deployments, StatefulSets, Services, etc.
-//! - **Health Monitoring**: Checking node health and sync status
-//! - **Lifecycle Management**: Finalizers for clean resource cleanup
-//! - **Leader Election**: Ensuring only one operator instance reconciles at a time
-//! - **Remediation**: Automatic recovery from common failure modes
-//! - **Archive Management**: History archive integrity and pruning
-//! - **Disaster Recovery**: Backup and restore automation
-//! - **Service Mesh Integration**: Istio and Linkerd support
-//! - **CVE Patching**: Automatic security updates
-//! - **Blue/Green Deployments**: Zero-downtime RPC node updates
-//! - **Metrics**: Prometheus metrics for observability
-//!
-//! # Key Types
-//!
-//! - [`reconciler::ControllerState`] - Shared state for the reconciliation loop
-//! - [`reconciler::run_controller`] - Main entry point for the controller
-//! - [`health::HealthCheckResult`] - Node health status
-//! - [`archive_health::ArchiveHealthResult`] - Archive integrity status
-//! - [`remediation::RemediationLevel`] - Severity of remediation actions
-//! - [`blue_green::BlueGreenStatus`] - Blue/Green deployment status
-//!
-//! # Reconciliation Flow
-//!
-//! 1. Watch for StellarNode resource changes
-//! 2. Acquire leader lease (if leader election enabled)
-//! 3. Validate node specification
-//! 4. Create/update Kubernetes resources (Deployments, Services, PVCs, etc.)
-//! 5. Monitor health and sync status
-//! 6. Apply remediation if needed
-//! 7. Update node status with conditions
-//! 8. Requeue for periodic reconciliation
-//!
-//! # Finalizers
-//!
-//! The controller uses Kubernetes finalizers to ensure clean cleanup:
-//! - Removes PVCs if retention policy is `Delete`
-//! - Cleans up associated resources (Services, ConfigMaps, etc.)
-//! - Removes finalizer only after successful cleanup
+//! The controller is organized into multiple modules, each responsible
+//! for a specific aspect of reconciliation. All modules are listed here.
 
 pub mod benchmark;
 pub mod blue_green;
@@ -60,6 +65,7 @@ pub mod label_propagation;
 pub mod maintenance;
 pub mod network_isolation;
 pub mod predictive_scaling;
+pub mod pdb;
 pub mod pss;
 pub mod resource_meta;
 
@@ -78,44 +84,44 @@ pub mod cross_cluster;
 pub mod cve;
 pub(crate) mod cve_reconciler;
 pub mod cve_scanner;
-#[cfg(test)]
+[cfg(test)]
 pub(crate) mod cve_test;
 pub mod db_pool;
 pub mod diff;
 pub mod disk_scaler;
-#[cfg(test)]
+[cfg(test)]
 mod disk_scaler_test;
 pub mod dr;
 pub mod dr_drill;
-#[cfg(test)]
+[cfg(test)]
 mod dr_test;
 pub(crate) mod finalizers;
 pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
-#[cfg(test)]
+[cfg(test)]
 mod health_test;
 pub mod kms_secret;
-#[cfg(feature = "metrics")]
+[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod mtls;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
 pub mod operator_config;
 pub mod peer_discovery;
-#[cfg(test)]
+[cfg(test)]
 mod peer_discovery_test;
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
 pub(crate) mod reconciler;
-#[cfg(test)]
+[cfg(test)]
 mod reconciler_test;
 pub(crate) mod remediation;
-#[cfg(test)]
+[cfg(test)]
 mod remediation_test;
 pub(crate) mod resources;
-#[cfg(test)]
+[cfg(test)]
 mod resources_test;
 pub mod service_mesh;
 mod snapshot;
@@ -124,7 +130,7 @@ pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
 pub mod traffic;
-#[cfg(test)]
+[cfg(test)]
 mod traffic_test;
 pub mod vpa;
 pub(crate) mod vsl;
@@ -179,10 +185,10 @@ pub use pss::{
     ensure_namespace_pss_labels, restricted_container_security_context,
     restricted_pod_security_context, validate_pss_compliance, PssViolation,
 };
-#[cfg(feature = "reconciler-fuzz")]
-pub use reconciler::reconcile_for_fuzz;
+[cfg(feature = "reconciler-fuzz")]
+pub use reconciler::reconcile_for_fuzzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
-pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
+pub use remediation::{san_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
