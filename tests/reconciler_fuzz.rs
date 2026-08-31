@@ -219,6 +219,7 @@ fn base_soroban_spec() -> StellarNodeSpec {
             captive_core_structured_config: None,
             enable_preflight: true,
             max_events_per_request: 10000,
+            cache: None,
         }),
         replicas: 2,
         min_available: None,
