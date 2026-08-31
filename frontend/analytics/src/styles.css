@@ -39,3 +39,52 @@ select, .tool-button { min-height: 38px; border: 1px solid #344350; border-radiu
 .detail-list { margin: 0; border-top: 1px solid #273340; }.detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #273340; }.detail-row dt { color: #91a0ad; font-size: 12px; }.detail-row dd { margin: 0; color: #e8edf2; font: 12px 'DM Mono', monospace; text-align: right; }.inspector-note { margin-top: 18px; padding: 12px; border-left: 2px solid #f5b942; color: #aebbc6; font-size: 12px; line-height: 1.5; }
 @media (max-width: 900px) { .app-shell { padding: 22px 18px 32px; }.topbar { align-items: flex-start; flex-direction: column; }.toolbar { width: 100%; align-items: stretch; }.select-wrap { flex: 1; }.workspace { grid-template-columns: 1fr; }.inspector { min-height: 260px; }.empty-inspector { padding-top: 30px; }.scene-host { height: 58vh; min-height: 360px; } }
 @media (max-width: 560px) { .metric-strip { grid-template-columns: repeat(2, 1fr); }.metric { padding: 16px 8px 16px 0; margin-right: 8px; }.metric strong { font-size: 21px; }.panel-heading { align-items: flex-start; flex-direction: column; justify-content: center; }.toolbar { flex-direction: column; }.scene-host { min-height: 320px; } }
+
+.view-toggle { display: inline-flex; border: 1px solid #344350; border-radius: 6px; overflow: hidden; }
+.view-toggle button { min-height: 38px; padding: 0 12px; border: 0; background: #121c26; color: #7f92a3; font: 500 12px 'Space Grotesk', sans-serif; }
+.view-toggle button + button { border-left: 1px solid #344350; }
+.view-toggle button.active { background: #1b2a37; color: #a9f0ce; }
+
+.fee-explorer { margin-top: 18px; }
+.fee-explorer-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid #273340; }
+.fee-explorer-head h2 { margin: 8px 0 4px; font-size: clamp(24px, 3vw, 36px); font-weight: 600; line-height: 1; }
+.fee-explorer-head p { margin: 0; color: #91a0ad; font-size: 14px; }
+.fee-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; margin-top: 18px; align-items: start; }
+.fee-chart-card, .fee-panel { border: 1px solid #273340; background: #101923; border-radius: 8px; }
+.fee-chart-card { grid-column: 1 / -1; padding: 16px; min-width: 0; }
+.fee-chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #273340; font-size: 13px; }
+.fee-chart-head > div { display: flex; align-items: center; gap: 9px; }
+.fee-chart-head strong { font-weight: 500; }
+.fee-timeframe { display: inline-flex; border: 1px solid #344350; border-radius: 6px; overflow: hidden; }
+.fee-timeframe button { min-height: 30px; padding: 0 10px; border: 0; background: #121c26; color: #7f92a3; font: 500 11px 'Space Grotesk', sans-serif; }
+.fee-timeframe button + button { border-left: 1px solid #344350; }
+.fee-timeframe button.active { background: #1b2a37; color: #a9f0ce; }
+.fee-chart-body { overflow: hidden; }
+.fee-chart-body svg { display: block; max-width: 100%; height: auto; }
+.fee-axis { font-family: 'DM Mono', monospace; }
+.fee-chart-foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 10px; font-size: 11px; }
+.fee-spark-note { color: #f05d5e; }
+
+.fee-panel { padding: 18px; }
+.fee-panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #273340; }
+.fee-panel-head h2 { margin: 6px 0 0; font-size: 18px; font-weight: 500; }
+.fee-tiers { margin: 0; }
+.fee-tier-summary { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #273340; font-size: 12px; }
+.fee-tier-summary dt { color: #91a0ad; }
+.fee-tier-summary dd { margin: 0; font: 500 12px 'DM Mono', monospace; }
+.fee-tier-rows { display: grid; gap: 8px; padding: 14px 0; }
+.fee-tier-row { display: grid; grid-template-columns: 84px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid #273340; border-radius: 6px; background: #0d1620; }
+.fee-tier-name { font: 500 11px 'DM Mono', monospace; text-transform: capitalize; }
+.fee-tier-mult { font-size: 11px; }
+.fee-tier-row strong { font: 500 15px 'DM Mono', monospace; }
+.fee-tier-row > .muted { font-size: 11px; text-align: right; }
+
+.fee-calc-inputs { display: grid; gap: 12px; padding: 14px 0; }
+.fee-field { display: grid; gap: 6px; color: #91a0ad; font-size: 12px; }
+.fee-field input[type='range'] { accent-color: #39d98a; cursor: pointer; }
+.fee-field select { min-height: 34px; border: 1px solid #344350; border-radius: 6px; background: #121c26; color: #e8edf2; padding: 0 10px; }
+.fee-calc-results { margin: 0; }
+.fee-calc-total dt, .fee-calc-total dd { font-weight: 500; color: #a9f0ce; }
+.fee-calc-note { margin-top: 14px; font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 900px) { .fee-explorer-head { align-items: flex-start; flex-direction: column; }.fee-grid { grid-template-columns: 1fr; }.fee-chart-card { grid-column: 1; } }

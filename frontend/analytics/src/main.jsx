@@ -1,6 +1,7 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
+import FeeExplorer from './components/FeeExplorer.jsx';
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
 import './styles.css';
 
@@ -17,6 +18,7 @@ function streamUrl(source) {
 }
 
 function App() {
+  const [view, setView] = useState('topology');
   const [source, setSource] = useState(initialSource);
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
@@ -90,21 +92,33 @@ function App() {
           <h1>Network topology</h1>
           <p>Multi-cluster quorum health.</p>
         </div>
-        <div className="toolbar" role="toolbar" aria-label="Topology controls">
-          <label className="select-wrap">
-            <span>Data source</span>
-            <select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="live">Live operator stream</option>
-              <option value="kafka">Kafka WebSocket bridge</option>
-              <option value="mock">Mock Kafka stream</option>
-            </select>
-          </label>
-          <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-            {paused ? 'Resume motion' : 'Pause motion'}
-          </button>
+        <div className="toolbar" role="toolbar" aria-label="Explorer controls">
+          <div className="view-toggle" role="group" aria-label="Explorer view">
+            <button type="button" className={view === 'topology' ? 'active' : ''} onClick={() => setView('topology')}>Topology</button>
+            <button type="button" className={view === 'fees' ? 'active' : ''} onClick={() => setView('fees')}>Fee explorer</button>
+          </div>
+          {view === 'topology' ? (
+            <label className="select-wrap">
+              <span>Data source</span>
+              <select value={source} onChange={(event) => setSource(event.target.value)}>
+                <option value="live">Live operator stream</option>
+                <option value="kafka">Kafka WebSocket bridge</option>
+                <option value="mock">Mock Kafka stream</option>
+              </select>
+            </label>
+          ) : null}
+          {view === 'topology' ? (
+            <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
+              {paused ? 'Resume motion' : 'Pause motion'}
+            </button>
+          ) : null}
         </div>
       </header>
 
+      {view === 'fees' ? (
+        <FeeExplorer />
+      ) : (
+        <>
       <section className="metric-strip" aria-label="Network summary">
         <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
         <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
@@ -135,6 +149,8 @@ function App() {
           {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
         </aside>
       </section>
+        </>
+      )}
     </main>
   );
 }
