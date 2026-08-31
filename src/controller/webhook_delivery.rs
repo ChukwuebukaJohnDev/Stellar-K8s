@@ -19,7 +19,7 @@
 //!
 //! ```rust,no_run
 //! use stellar_k8s::controller::webhook_delivery::{
-//!     WebhookDeliveryService, WebhookEndpoint, WebhookEvent, TransactionEventPayload,
+//!     WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
 //! };
 //! use std::sync::Arc;
 //!

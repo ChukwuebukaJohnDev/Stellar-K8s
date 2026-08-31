@@ -103,6 +103,7 @@ pub(crate) fn resource_name(node: &StellarNode, suffix: &str) -> String {
 /// If `base` is `None` and `override_cfg` is `Some`, a minimal probe shell is created and the
 /// overrides are applied so the operator can still honour user-supplied thresholds even when no
 /// default probe is configured.
+#[allow(dead_code)] // Test-only wrapper exposing the private `apply_probe_override` helper.
 pub(crate) fn apply_probe_override_pub(
     base: Option<k8s_openapi::api::core::v1::Probe>,
     override_cfg: Option<&crate::crd::types::ProbeOverride>,
@@ -114,7 +115,10 @@ fn apply_probe_override(
     base: Option<k8s_openapi::api::core::v1::Probe>,
     override_cfg: Option<&crate::crd::types::ProbeOverride>,
 ) -> Option<k8s_openapi::api::core::v1::Probe> {
-    let cfg = override_cfg?;
+    let Some(cfg) = override_cfg else {
+        // No overrides: hand back the base probe untouched.
+        return base;
+    };
     let mut probe = base.unwrap_or_default();
     if let Some(v) = cfg.initial_delay_seconds {
         probe.initial_delay_seconds = Some(v);

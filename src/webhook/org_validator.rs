@@ -178,8 +178,8 @@ fn validate_required_labels(node: &StellarNode, errors: &mut Vec<OrgValidationEr
 /// Supports: "500m", "1", "2.5", "4000m"
 fn parse_cpu_millicores(s: &str) -> Option<u64> {
     let s = s.trim();
-    if s.ends_with('m') {
-        s[..s.len() - 1].parse::<u64>().ok()
+    if let Some(rest) = s.strip_suffix('m') {
+        rest.parse::<u64>().ok()
     } else {
         // Whole cores — multiply by 1000
         s.parse::<f64>().ok().map(|v| (v * 1000.0) as u64)
@@ -190,23 +190,14 @@ fn parse_cpu_millicores(s: &str) -> Option<u64> {
 /// Supports: "512Mi", "1Gi", "2048M", "1073741824" (bytes)
 fn parse_memory_mib(s: &str) -> Option<u64> {
     let s = s.trim();
-    if s.ends_with("Gi") {
-        s[..s.len() - 2]
-            .parse::<f64>()
-            .ok()
-            .map(|v| (v * 1024.0) as u64)
-    } else if s.ends_with("Mi") {
-        s[..s.len() - 2].parse::<u64>().ok()
-    } else if s.ends_with("G") {
-        s[..s.len() - 1]
-            .parse::<f64>()
-            .ok()
-            .map(|v| (v * 953.674) as u64) // 1 GB ≈ 953.674 MiB
-    } else if s.ends_with("M") {
-        s[..s.len() - 1]
-            .parse::<f64>()
-            .ok()
-            .map(|v| (v * 0.953674) as u64)
+    if let Some(rest) = s.strip_suffix("Gi") {
+        rest.parse::<f64>().ok().map(|v| (v * 1024.0) as u64)
+    } else if let Some(rest) = s.strip_suffix("Mi") {
+        rest.parse::<u64>().ok()
+    } else if let Some(rest) = s.strip_suffix('G') {
+        rest.parse::<f64>().ok().map(|v| (v * 953.674) as u64) // 1 GB ≈ 953.674 MiB
+    } else if let Some(rest) = s.strip_suffix('M') {
+        rest.parse::<f64>().ok().map(|v| (v * 0.953674) as u64)
     } else {
         // Raw bytes
         s.parse::<u64>().ok().map(|b| b / (1024 * 1024))

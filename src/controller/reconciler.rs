@@ -376,6 +376,8 @@ impl ControllerState {
 ///         log_reload_handle: reload_handle,
 ///         log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
 ///         last_event_received: Arc::new(AtomicU64::new(0)),
+///         job_registry: Arc::new(Default::default()),
+///         audit_log: Arc::new(Default::default()),
 ///         oidc_config: None,
 ///     });
 ///     run_controller(state).await?;
@@ -1859,7 +1861,6 @@ pub(crate) fn apply_stellar_node(
                     }
                 }
 
-                let scaling_config_clone = scaling_config.clone();
                 apply_or_emit!(
                     &ctx,
                     &node,
