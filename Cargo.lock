@@ -3477,6 +3477,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "merkle-verifier"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
