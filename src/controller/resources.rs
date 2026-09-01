@@ -79,6 +79,34 @@ pub(crate) fn standard_labels(node: &StellarNode) -> BTreeMap<String, String> {
     labels
 }
 
+pub(crate) fn merge_service_metadata_labels(
+    labels: &mut BTreeMap<String, String>,
+    node: &StellarNode,
+) {
+    if let Some(extra_labels) = &node.spec.service_labels {
+        labels.extend(extra_labels.clone());
+    }
+    if let Some(resource_meta) = &node.spec.resource_meta {
+        if let Some(extra_labels) = &resource_meta.labels {
+            labels.extend(extra_labels.clone());
+        }
+    }
+}
+
+pub(crate) fn merge_service_annotations(
+    annotations: &mut BTreeMap<String, String>,
+    node: &StellarNode,
+) {
+    if let Some(extra_annotations) = &node.spec.service_annotations {
+        annotations.extend(extra_annotations.clone());
+    }
+    if let Some(resource_meta) = &node.spec.resource_meta {
+        if let Some(extra_annotations) = &resource_meta.annotations {
+            annotations.extend(extra_annotations.clone());
+        }
+    }
+}
+
 /// Create an OwnerReference for garbage collection
 pub(crate) fn owner_reference(node: &StellarNode) -> OwnerReference {
     OwnerReference {
@@ -265,7 +293,7 @@ fn pvc_needs_update(existing: &PersistentVolumeClaim, desired: &PersistentVolume
         || existing.metadata.annotations != desired.metadata.annotations
 }
 
-fn build_pvc(node: &StellarNode, storage_class_name: String) -> PersistentVolumeClaim {
+pub(crate) fn build_pvc(node: &StellarNode, storage_class_name: String) -> PersistentVolumeClaim {
     let labels = standard_labels(node);
     let name = resource_name(node, "data");
 
@@ -661,7 +689,7 @@ pub async fn ensure_canary_deployment(
     Ok(())
 }
 
-fn build_deployment(node: &StellarNode, enable_mtls: bool) -> Deployment {
+pub(crate) fn build_deployment(node: &StellarNode, enable_mtls: bool) -> Deployment {
     let labels = standard_labels(node);
     let name = node.name_any();
 
@@ -750,7 +778,7 @@ pub async fn ensure_statefulset(
 }
 
 // *** seed_injection added as parameter ***
-fn build_statefulset(
+pub(crate) fn build_statefulset(
     node: &StellarNode,
     enable_mtls: bool,
     seed_injection: Option<&kms_secret::SeedInjectionSpec>,
@@ -910,7 +938,7 @@ pub async fn ensure_canary_service(
     Ok(())
 }
 
-fn build_service(node: &StellarNode, enable_mtls: bool) -> Service {
+pub(crate) fn build_service(node: &StellarNode, enable_mtls: bool) -> Service {
     let labels = standard_labels(node);
     let name = node.name_any();
 
@@ -3025,7 +3053,7 @@ fn build_cache_proxy_container(cache: &crate::crd::SorobanCacheConfig) -> Contai
 }
 
 /// Build the migration container for Horizon
-fn build_horizon_migration_container(node: &StellarNode) -> Container {
+pub(crate) fn build_horizon_migration_container(node: &StellarNode) -> Container {
     let mut container = build_container(node, false);
     container.name = "horizon-db-migration".to_string();
     container.command = Some(vec!["/bin/sh".to_string()]);
@@ -4063,7 +4091,7 @@ pub async fn delete_network_policy(
 // PodDisruptionBudget — unchanged
 // ============================================================================
 
-fn build_pdb(node: &StellarNode) -> Option<PodDisruptionBudget> {
+pub(crate) fn build_pdb(node: &StellarNode) -> Option<PodDisruptionBudget> {
     if node.spec.replicas <= 1 {
         return None;
     }

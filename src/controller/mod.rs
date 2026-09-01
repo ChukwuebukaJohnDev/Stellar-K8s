@@ -31,7 +31,10 @@ pub mod label_propagation;
 pub mod leader;
 pub mod maintenance;
 pub mod migration;
+pub mod ml_pipeline;
 pub mod network_isolation;
+pub mod observability_pipeline;
+pub mod phases;
 pub mod predictive_scaling;
 pub mod pss;
 pub mod quota;
@@ -74,6 +77,7 @@ mod dr_test;
 pub(crate) mod finalizers;
 pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
+pub mod health_check_sidecar;
 #[cfg(test)]
 mod health_test;
 pub mod ingestion;
@@ -97,18 +101,20 @@ mod reconciler_test;
 pub(crate) mod remediation;
 #[cfg(test)]
 mod remediation_test;
+pub mod resource_optimization;
 pub(crate) mod resources;
 #[cfg(test)]
 mod resources_test;
 pub mod rollout;
+pub mod secret_watcher;
 pub mod security;
 pub mod service_mesh;
 mod snapshot;
 pub mod snapshot_worker;
+pub mod spot_drain;
 pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
-pub mod tenant_reconciler;
 pub mod topology;
 pub mod traffic;
 #[cfg(test)]

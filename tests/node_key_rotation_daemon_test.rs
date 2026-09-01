@@ -132,6 +132,7 @@ async fn integration_rotation_promotes_candidate_with_clean_logs() {
         .filter_map(|event| event.consensus_healthy)
         .all(|healthy| healthy));
     assert!(!serialized_report.contains(&candidate_seed));
+    println!("rotation_report={serialized_report}");
     assert_eq!(
         backend.current().await.material.public_key,
         candidate.public_key

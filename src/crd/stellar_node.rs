@@ -23,9 +23,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::types::{
-
-};
+use super::types::*;
 
 /// Structured validation error for `StellarNodeSpec`
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1131,6 +1129,49 @@ fn validate_gas_autoscaling(gas: &GasAutoscalingConfig, errors: &mut Vec<SpecVal
     }
 }
 
+fn validate_queue_autoscaling(
+    queue: &QueueAutoscalingConfig,
+    errors: &mut Vec<SpecValidationError>,
+) {
+    if !queue.enabled {
+        return;
+    }
+    if queue.min_replicas < 1 {
+        errors.push(SpecValidationError::new(
+            "spec.autoscaling.queueAutoscaling.minReplicas",
+            "queueAutoscaling.minReplicas must be at least 1",
+            "Set spec.autoscaling.queueAutoscaling.minReplicas to 1 or greater.",
+        ));
+    }
+    if queue.max_replicas < queue.min_replicas {
+        errors.push(SpecValidationError::new(
+            "spec.autoscaling.queueAutoscaling.maxReplicas",
+            "queueAutoscaling.maxReplicas must be >= minReplicas",
+            "Set spec.autoscaling.queueAutoscaling.maxReplicas to be greater than or equal to minReplicas.",
+        ));
+    }
+    if queue.target_pending_per_replica == 0 {
+        errors.push(SpecValidationError::new(
+            "spec.autoscaling.queueAutoscaling.targetPendingPerReplica",
+            "queueAutoscaling.targetPendingPerReplica must be greater than 0",
+            "Set spec.autoscaling.queueAutoscaling.targetPendingPerReplica to a positive request count.",
+        ));
+    }
+    if queue.metric_name.trim().is_empty() {
+        errors.push(SpecValidationError::new(
+            "spec.autoscaling.queueAutoscaling.metricName",
+            "queueAutoscaling.metricName must not be empty",
+            "Set spec.autoscaling.queueAutoscaling.metricName to the Prometheus gauge name to poll.",
+        ));
+    }
+    if queue.poll_interval_seconds == 0 {
+        errors.push(SpecValidationError::new(
+            "spec.autoscaling.queueAutoscaling.pollIntervalSeconds",
+            "queueAutoscaling.pollIntervalSeconds must be greater than 0",
+            "Set spec.autoscaling.queueAutoscaling.pollIntervalSeconds to a positive polling interval.",
+        ));
+    }
+}
 
 fn validate_ingress(ingress: &IngressConfig, errors: &mut Vec<SpecValidationError>) {
     if ingress.hosts.is_empty() {

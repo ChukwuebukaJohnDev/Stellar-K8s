@@ -10,13 +10,23 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//! Maintenance Window Controller logic
+//! Maintenance Window Controller logic.
 //!
 //! Manages the lifecycle of maintenance windows and triggers DB compaction.
 //! This is a thin facade over [`super::compactor`]: the heavy lifting (drain,
 //! compact, verify, rejoin) lives in [`super::compactor::run_compaction_cycle`].
 
+use std::sync::Arc;
 
+use chrono::NaiveTime;
+use kube::{Client, ResourceExt};
+use regex::Regex;
+use sqlx::PgPool;
+use tracing::{debug, info};
+
+use super::compactor::{self, CompactionCoordinator};
+use crate::crd::{DbMaintenanceConfig, StellarNode};
+use crate::error::Result;
 
 pub struct MaintenanceController {
     client: Client,
@@ -31,23 +41,30 @@ impl MaintenanceController {
         }
     }
 
-    /// Check if we are currently in a maintenance window (cron schedule or
-    /// `windowStart`/`windowDuration` fallback).
+    /// Check if we are currently in a maintenance window.
     pub fn is_in_window(&self, node: &StellarNode) -> bool {
         let config = match &node.spec.db_maintenance_config {
             Some(c) if c.enabled => c,
             _ => return false,
         };
 
-
+        is_time_in_window(config, chrono::Local::now().time())
     }
 
     /// Run maintenance tasks for a node if needed.
     ///
-    /// Executes the full compaction cycle: quiet check → fragmentation
-    /// evaluation → traffic drain → VACUUM FULL / REINDEX → ledger pruning →
-    /// post-compaction checksum verification → traffic rejoin.
+    /// Executes the full compaction cycle: quiet check, fragmentation
+    /// evaluation, traffic drain, compaction, ledger pruning, integrity
+    /// verification, and traffic rejoin.
     pub async fn run_maintenance(&self, node: &StellarNode, pool: PgPool) -> Result<()> {
+        if !self.is_in_window(node) {
+            debug!(
+                "Maintenance skipped for node {}: outside maintenance window",
+                node.name_any()
+            );
+            return Ok(());
+        }
+
         let report =
             compactor::run_compaction_cycle(&self.client, None, &self.coordinator, node, &pool)
                 .await?;
@@ -57,6 +74,16 @@ impl MaintenanceController {
                 "Maintenance skipped for node {}: {skipped}",
                 node.name_any()
             );
+        } else {
+            info!(
+                "Maintenance complete for node {}: {} table(s) compacted, {} bytes freed, integrity={}, ledgers pruned={}",
+                node.name_any(),
+                report.tables_compacted.len(),
+                report.bytes_freed,
+                report.integrity_valid,
+                report.ledgers_pruned
+            );
+        }
 
         Ok(())
     }
@@ -112,7 +139,6 @@ pub fn is_time_in_window(config: &DbMaintenanceConfig, now: NaiveTime) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crd::types::DbMaintenanceConfig;
 
     #[test]
     fn test_is_time_in_window_basic() {
@@ -120,12 +146,12 @@ mod tests {
             enabled: true,
             window_start: "02:00".to_string(),
             window_duration: "2h".to_string(),
+            schedule: None,
             bloat_threshold_percent: 30,
             auto_reindex: true,
             read_pool_coordination: false,
-            enable_query_profiling: false,
-            auto_index_maintenance: false,
-            slow_query_threshold_ms: 100,
+            enable_ledger_pruning: false,
+            pruning_retention_days: 30,
         };
 
         assert!(is_time_in_window(
@@ -144,12 +170,12 @@ mod tests {
             enabled: true,
             window_start: "23:00".to_string(),
             window_duration: "3h".to_string(),
+            schedule: None,
             bloat_threshold_percent: 30,
             auto_reindex: true,
             read_pool_coordination: false,
-            enable_query_profiling: false,
-            auto_index_maintenance: false,
-            slow_query_threshold_ms: 100,
+            enable_ledger_pruning: false,
+            pruning_retention_days: 30,
         };
 
         assert!(is_time_in_window(

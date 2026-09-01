@@ -130,6 +130,7 @@ pub mod message_queue;
 pub mod network_observability;
 pub mod plugin_sdk;
 pub mod preflight;
+#[path = "profiling/mod.rs"]
 pub mod profiling;
 pub mod runbook;
 pub mod scheduler;
@@ -137,6 +138,7 @@ pub mod schema_registry;
 pub mod sdk;
 pub mod search;
 pub mod security;
+#[path = "telemetry.rs"]
 pub mod telemetry;
 pub mod version_check;
 pub mod websocket_streaming;
