@@ -54,6 +54,7 @@ Node colors indicate health: green is synced, amber is degraded, and red is fall
 ```bash
 npm test
 npm run build
+npm run matrix:perf
 ```
 
 The model tests exercise both snapshot and message ingestion. The browser performance target is validated with the mock harness and browser devtools or a production preview build; the renderer avoids per-edge/per-node React elements and limits device pixel ratio to reduce GPU pressure.
