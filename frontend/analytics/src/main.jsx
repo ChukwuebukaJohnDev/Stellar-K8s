@@ -1,9 +1,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
-import FeeExplorer from './components/FeeExplorer.jsx';
+
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
-import { buildQuorumMatrix, emptyMatrix, matrixStats } from '../matrix/quorumMatrixModel.js';
+
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());
@@ -12,6 +12,9 @@ const sourceFromQuery = query.get('source');
 const bridgeUrl = query.get('ws') || 'localhost:8787';
 const initialSource = sourceFromQuery === 'mock' || sourceFromQuery === 'kafka' ? sourceFromQuery : 'live';
 
+// Tab driven by ?view= query param so links are shareable.
+const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
+
 function streamUrl(source) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   if (source === 'mock' || source === 'kafka') return `${protocol}://${bridgeUrl}`;
@@ -19,8 +22,9 @@ function streamUrl(source) {
 }
 
 function App() {
-  const [view, setView] = useState('topology');
+
   const [source, setSource] = useState(initialSource);
+  const [view, setView] = useState('topology');
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
@@ -33,6 +37,7 @@ function App() {
   const renderFrameRef = useRef(null);
 
   useEffect(() => {
+    if (view !== 'topology') return; // don't open WS if not on topology view
     streamStateRef.current = createStreamState();
     setGraph(EMPTY_GRAPH);
     setMatrix(emptyMatrix());
@@ -78,7 +83,7 @@ function App() {
         renderFrameRef.current = null;
       }
     };
-  }, [source]);
+  }, [source, view]);
 
   const counts = useMemo(() => {
     const values = graph.nodes.map(statusForNode);
@@ -99,84 +104,21 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <span className="eyebrow">STELLAR / OBSERVABILITY</span>
-          <h1>Network topology</h1>
-          <p>Multi-cluster quorum health.</p>
+          <h1>{view === 'heatmap' ? 'Resource Saturation' : 'Network Topology'}</h1>
+          <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
-        <div className="toolbar" role="toolbar" aria-label="Explorer controls">
-          <div className="view-toggle" role="group" aria-label="Explorer view">
-            <button type="button" className={view === 'topology' ? 'active' : ''} onClick={() => setView('topology')}>Topology</button>
-            <button type="button" className={view === 'fees' ? 'active' : ''} onClick={() => setView('fees')}>Fee explorer</button>
-          </div>
-          {view === 'topology' ? (
-            <label className="select-wrap">
-              <span>Data source</span>
-              <select value={source} onChange={(event) => setSource(event.target.value)}>
-                <option value="live">Live operator stream</option>
-                <option value="kafka">Kafka WebSocket bridge</option>
-                <option value="mock">Mock Kafka stream</option>
-              </select>
-            </label>
-          ) : null}
-          {view === 'topology' ? (
-            <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-              {paused ? 'Resume motion' : 'Pause motion'}
-            </button>
-          ) : null}
-        </div>
-      </header>
 
-      {view === 'fees' ? (
-        <FeeExplorer />
-      ) : (
-        <>
-      <section className="metric-strip" aria-label="Network summary">
-        <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
-        <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
-        <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
-        <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
-      </section>
-
-      <section className="workspace">
-        <div className="graph-panel">
-          <div className="panel-heading">
-            <div>
-              <span className={`status-dot ${connection}`} />
-              <strong>{sourceLabel}</strong>
-              <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
-            </div>
-            <span className="muted">Live graph</span>
-          </div>
-          {view === 'matrix'
-            ? <QuorumMatrixCanvas matrix={matrix} onHoverCell={setHoverCell} />
-            : <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />}
-          {view === 'matrix'
-            ? (
-              <div className="legend" aria-label="Matrix legend">
-                <Legend color="green" label="Agreeing" />
-                <Legend color="amber" label="Confirming" />
-                <Legend color="blue" label="Lagging" />
-                <Legend color="red" label="Diverged" />
-                <span className="muted">{hoverCell ? `row ${hoverCell.sourceIndex} → col ${hoverCell.targetIndex}` : `${matrixSummary?.cells.toLocaleString() ?? 0} interconnect cells`}</span>
               </div>
-            )
-            : (
+              <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
               <div className="legend" aria-label="Node health legend">
                 <Legend color="green" label="Synced" />
                 <Legend color="amber" label="Degraded" />
                 <Legend color="red" label="Falling behind" />
               </div>
-            )}
-        </div>
+            </div>
 
-        <aside className="inspector" aria-live="polite">
-          <span className="eyebrow">{view === 'matrix' ? 'CELL INSPECTOR' : 'NODE INSPECTOR'}</span>
-          {view === 'matrix'
-            ? <CellInspector cell={hoverCell} matrix={matrix} summary={matrixSummary} />
-            : (selected ? <NodeInspector node={selected} /> : <EmptyInspector />)}
-        </aside>
-      </section>
-        </>
-      )}
+
+
     </main>
   );
 }
