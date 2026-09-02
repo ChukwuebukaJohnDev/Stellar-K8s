@@ -3,6 +3,79 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.6.0 (2026-09-02) [minor]
+
+• Merge pull request #165 from Akinloluwa20/fix/db-compaction-daemon-issues
+🐛 fix(maintenance): repair DB compaction daemon bugs
+• Merge pull request #166 from Emmycivity/feat/emergency-circuit-breaker-contract
+✨ feat(contracts): Multi-Sig Emergency Circuit Breaker Contract for Critical Infrastructure
+• Merge pull request #170 from midenotch/feat/issue-123-fee-estimator-explorer
+✨ feat(analytics): add network congestion and dynamic fee estimator explorer (#123)
+• Merge branch 'main' into feat/issue-123-fee-estimator-explorer
+• Merge pull request #169 from Salome-Agu/feat/rbac-manager
+✨ feat(rbac-manager): add hierarchical role-based access control module for Soroban contracts
+• Merge branch 'main' into fix/db-compaction-daemon-issues
+• Merge branch 'main' into feat/emergency-circuit-breaker-contract
+• Merge branch 'main' into feat/issue-123-fee-estimator-explorer
+• Merge branch 'main' of https://github.com/agnesnaomiolim-cloud/Stellar-K8s into feat/emergency-circuit-breaker-contract
+✨ feat(analytics): add network congestion and dynamic fee estimator explorer (#123)
+✨ feat(rbac-manager): add hierarchical role-based access control module for Soroban contracts
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+✨ feat(contracts): add Multi-Sig Emergency Circuit Breaker contract
+• Implements a Soroban-native M-of-N emergency circuit breaker for
+• critical infrastructure, resolving issue #28.
+• What is added:
+• contracts/emergency-breaker/src/state.rs
+• - FreezeScope bitmask type with NONE/DEPOSITS/WITHDRAWALS/GOVERNANCE/ALL
+•   constants; bit-AND-based O(1) is_frozen hot path
+• - StorageKey/StorageValue typed enums mirroring Soroban instance storage
+• - StateStore wrapper (HashMap backend) with typed getters/setters
+• - BreakerState enum (Active / Frozen / PendingThaw) with lifecycle
+•   transition logic driven by freeze scope + timelock timestamp
+• - 4 unit tests for scope operations and state transitions
+• contracts/emergency-breaker/src/lib.rs
+• - BreakerError — full typed error enum for all failure modes
+• - Domain-separated signing messages: SHA-256(domain_tag || scope || action)
+•   preventing cross-action replay of operator signatures
+• - CircuitBreaker struct with:
+•   - initialize(threshold M, operators[N], timelock_delay)
+•   - freeze(scope, sigs, now) — M-of-N Ed25519 multi-sig gate; sets
+•     FreezeScope bitmask + timelock in a single write
+•   - unfreeze(sigs, now) — timelock-gated M-of-N unfreeze
+•   - assert_not_frozen(op) — O(1) pause check for hot-path use
+•   - is_frozen(op) / state(now) — read-only inspection
+• - verify_multisig() — validates Ed25519 signatures, rejects unauthorized
+•   signers, duplicates, and cryptographically invalid signatures
+• - 15 unit tests covering: 3-of-5 initialization, double-init guard,
+•   invalid threshold, empty operator list, M-of-N freeze/unfreeze,
+•   insufficient sigs, unauthorized/duplicate/tampered signatures,
+•   granular scope (deposits frozen while withdrawals remain open),
+•   timelock enforcement, 3-of-5 high-throughput simulation (1000 calls)
+• Cargo.toml (root)
+• - Added contracts/emergency-breaker to workspace members
+• - Fixed pre-existing profile parse error (panic/lto not valid in
+•   package-level profile overrides in Cargo 1.83+)
+• Closes #28
+🐛 fix(maintenance): repair DB compaction daemon bugs
+• Fix several correctness issues in the compaction daemon so the
+• drain → compact → verify → rejoin lifecycle works reliably:
+• - Batched ledger pruning used `DELETE ... LIMIT`, which PostgreSQL
+•   rejects; rewrite as `ctid IN (SELECT ... LIMIT)` subqueries.
+• - Checksum verification chunked rows by physical scan position, so
+•   VACUUM FULL (which rewrites tables) could produce false integrity
+•   mismatches; bucket rows by their own md5 instead.
+• - `bytes_freed` sign was inverted (reported negative when the store
+•   shrank); report before - after.
+• - The compaction-in-progress marker was left set when a cycle errored,
+•   causing every future sweep to skip the node; clear it on failure so
+•   the node can retry.
+• - Drop invalid `lto`/`panic` keys from the stellar-wasm-cache release
+•   package profile; modern cargo rejects them in package profiles.
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+
+
 ## Chart v2.5.0 (2026-09-02) [minor]
 
 • Merge pull request #188 from Bouynaty/fix/issue-85-backend-horizon-database-migration-health-gate
