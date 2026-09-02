@@ -22,7 +22,7 @@ function streamUrl(source) {
 }
 
 function App() {
-  const [view, setView] = useState(initialView);
+
   const [source, setSource] = useState(initialSource);
   const [view, setView] = useState('topology');
   const [graph, setGraph] = useState(EMPTY_GRAPH);
@@ -108,23 +108,6 @@ function App() {
           <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
 
-        <>
-          <section className="metric-strip" aria-label="Network summary">
-            <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
-            <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
-            <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
-            <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
-          </section>
-
-          <section className="workspace">
-            <div className="graph-panel">
-              <div className="panel-heading">
-                <div>
-                  <span className={`status-dot ${connection}`} />
-                  <strong>{sourceLabel}</strong>
-                  <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
-                </div>
-                <span className="muted">Live graph</span>
               </div>
               <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
               <div className="legend" aria-label="Node health legend">
@@ -133,6 +116,7 @@ function App() {
                 <Legend color="red" label="Falling behind" />
               </div>
             </div>
+
 
 
     </main>
