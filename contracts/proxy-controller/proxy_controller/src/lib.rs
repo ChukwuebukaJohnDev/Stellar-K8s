@@ -14,7 +14,7 @@
 
 pub mod deployer;
 
-use soroban_sdk::{contractevent, contracterror, contracttype, Address, Bytes, BytesN, Env};
+use soroban_sdk::{contracterror, contractevent, contracttype, Address, Bytes, BytesN, Env};
 
 /// Minimum delay, in seconds, between a bytecode proposal being submitted
 /// and it becoming eligible for live replacement.
@@ -35,6 +35,11 @@ pub const TIMELOCK_SECONDS: u64 = 48 * 60 * 60;
 /// must never reuse them for its own data.
 #[contracttype]
 #[derive(Clone)]
+// The shared `Proxy` prefix is deliberate and load-bearing: it is the
+// collision-prevention namespace described above, and Soroban serializes
+// these fieldless variants by name, so the prefix must stay on every
+// variant. `clippy::enum_variant_names` would have us strip it.
+#[allow(clippy::enum_variant_names)]
 enum ProxyDataKey {
     ProxyAdmin,
     ProxySecurityCouncil,
