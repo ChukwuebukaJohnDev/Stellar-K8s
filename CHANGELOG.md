@@ -3,6 +3,68 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.5.0 (2026-09-02) [minor]
+
+• Merge pull request #188 from Bouynaty/fix/issue-85-backend-horizon-database-migration-health-gate
+🐛 fix: horizon database migration health-gate controller
+• Merge branch 'main' into fix/issue-85-backend-horizon-database-migration-health-gate
+• Merge pull request #177 from oyeyemidavid-gif/feat/rollout-timeline-tracker
+✨ feat(timeline): add Stellar-specific rollout tracker visualizer
+• Merge pull request #174 from Fang0067/feat/argocd-finalizer-tracking-widget
+✨ feat(frontend): ArgoCD Sync Status & Finalizer Tracking Widget
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+🐛 fix: ## [Backend] Horizon Database Migration Health-Gate Controll (#85)
+✨ feat(timeline): add Stellar-specific rollout tracker visualizer
+• Standard Kubernetes UIs only show raw container status during a rolling
+• update. Add a standalone Vite app under frontend/timeline whose tracker
+• visualizes the Stellar initialization micro-phases per replica of a
+• StellarNode StatefulSet: Database Schema Migration -> History Catchup ->
+• Quorum Peering -> Fully Synced.
+• - Per-replica cards (Argo Rollouts-inspired) with a phase stepper, custom
+•   progress bars for ledger catch-up alongside raw Kubernetes container
+•   status, and highlighted human-readable diagnostics for blocked pods
+• - Deterministic 3-pod simulation where pod #1 freezes in History Catchup,
+•   isolating it as the rollout bottleneck behind a StatefulSet update gate;
+•   "Resume stuck replica" releases the gate
+• - useRolloutStream hook batches poll/WebSocket snapshots through
+•   requestAnimationFrame and drops unchanged revisions, so fast streams
+•   never thrash React rendering
+• - 19 unit tests covering phase derivation, stall detection, diagnostics,
+•   operator API normalization, and the full stuck-catchup lifecycle
+• 🤖 Generated with Codebuff
+• Co-Authored-By: Codebuff <noreply@codebuff.com>
+📝 docs(argocd): add README, lockfile, and gitignore for ArgoCD widget
+✨ feat(frontend): add ArgoCD Sync Status & Finalizer Tracking Widget
+• Implements issue #14. Adds a dedicated React widget under
+• frontend/widgets/argocd/ that interfaces with the ArgoCD API to
+• monitor StellarNode application sync states and identify resources
+• stuck in Terminating due to Kubernetes Finalizers.
+• Key additions:
+• - argoCdParser.js: pure, zero-dependency parser for ArgoCD Application
+•   resource trees. Flattens nested trees iteratively (stack-safe for
+•   100+ resource apps), detects Terminating resources, isolates
+•   Stellar-K8s specific finalizers, and generates contextual resolution
+•   hints per resource kind (Pod, PVC, PV, StellarNode).
+• - ArgoCdFinalizerWidget.jsx: React widget with per-app sidebar
+•   navigation, sync/health badges, Finalizer lock cards with
+•   expandable kubectl remediation hints, and an efficient polling
+•   client (ArgoCdPoller) that cancels in-flight requests on unmount.
+• - argoCdParser.test.js: 35 unit tests covering categorize,
+•   extractStellarFinalizers, isTerminating, buildResolutionHint,
+•   flattenResourceTree, and parseAppState including edge cases,
+•   malformed responses, and 100+ resource tree performance.
+• - styles.css: dark-mode premium design system consistent with the
+•   existing analytics panel (Space Grotesk + DM Mono typography,
+•   glassmorphism-inspired surface layers, micro-animation hover states).
+• - main.jsx: embed-friendly entry point configurable via URL query
+•   params (?base=, ?token=, ?poll=, ?mode=mock|live).
+• - package.json + vite.config.js + index.html: standalone Vite app
+•   with ArgoCD API proxy pre-configured.
+• Verification: node --test src/argoCdParser.test.js → 35/35 pass
+
+
 ## Chart v2.4.0 (2026-09-02) [minor]
 
 • Merge pull request #185 from nancybexter90-ctrl/fix/issue-15-backend-dynamic-kafka-partitioning-for-scp
