@@ -29,7 +29,7 @@ fn cache_now() -> CacheTimestamp {
 fn cache_expired(inserted_at: &CacheTimestamp, ttl_secs: u64) -> bool {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        Instant::now().duration_since(inserted_at.clone()) >= Duration::from_secs(ttl_secs)
+        Instant::now().duration_since(*inserted_at) >= Duration::from_secs(ttl_secs)
     }
 
     #[cfg(target_arch = "wasm32")]
