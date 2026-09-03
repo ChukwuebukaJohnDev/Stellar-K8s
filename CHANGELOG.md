@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.11.0 (2026-09-03) [minor]
+
+• Merge pull request #128 from temisan0x/feat/issue-48-topology-spread-enforcer
+✨ feat(controller): zone-aware anti-affinity downgrade (#48)
+• Merge branch 'main' into feat/issue-48-topology-spread-enforcer
+• Merge remote-tracking branch 'agnesnaomiolm/main' into feat/issue-48-topology-spread-enforcer
+• # Conflicts:
+• #	Cargo.toml
+• #	src/controller/mod.rs
+• Merge branch 'main' into feat/issue-48-topology-spread-enforcer
+🐛 fix: valid Cargo release profile config
+✨ feat(controller): zone-aware anti-affinity downgrade (#48)
+• Add topology.rs: fetches cluster zone topology and downgrades requested
+• Hard pod anti-affinity to Soft when the cluster lacks enough distinct
+• topology.kubernetes.io/zone values to satisfy strict placement across
+• sibling StellarNode pods (e.g. single-node Kind/Minikube dev clusters).
+• - New ZoneTopology/resolve_anti_affinity_strength logic, unit tested
+• - ensure_statefulset resolves effective strength once via cluster API
+•   before building the StatefulSet, threading it through
+•   build_statefulset -> build_pod_template -> merge_workload_affinity /
+•   build_topology_spread_constraints
+• - Deployment (Horizon/SorobanRpc) and read_pool builders keep the
+•   requested (unresolved) strength, out of scope for this issue
+• - RBAC: new cluster-scoped node-reader ClusterRole/ClusterRoleBinding
+•   for get/list/watch on nodes
+
+
 ## Chart v2.10.0 (2026-09-03) [minor]
 
 • Merge pull request #142 from Abd-Standard/feat/topology-enforcer-governance-proxy-amm-merkle-proof
