@@ -119,6 +119,7 @@ pub use archive_health::{
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
 pub use audit_recorder::AuditRecorder;
 pub use background_jobs::{JobKind, JobRecord, JobRegistry, JobState, MAX_JOBS};
+pub use captive::{CaptiveCoreProcess, CaptiveCoreSupervisor, SupervisorConfig, SupervisorState};
 pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
     cleanup_blue_deployment, create_green_deployment, rollback_to_blue, run_smoke_tests,
