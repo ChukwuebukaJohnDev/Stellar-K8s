@@ -2566,7 +2566,7 @@ pub(crate) fn apply_stellar_node(
         if node.spec.node_type == NodeType::Validator {
             if let Some(ref snapshot_config) = node.spec.snapshot_schedule {
                 if let Err(e) =
-                    super::snapshot::reconcile_snapshot(&client, &node, snapshot_config).await
+                    super::csi_snapshot::reconcile_snapshot(&client, &node, snapshot_config).await
                 {
                     warn!(
                         "Snapshot reconciliation failed for {}/{}: {}",

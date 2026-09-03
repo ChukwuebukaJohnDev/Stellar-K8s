@@ -95,7 +95,8 @@ pub mod rollout;
 pub mod secret_watcher;
 pub mod security;
 pub mod service_mesh;
-mod snapshot;
+mod csi_snapshot;
+pub mod snapshot;
 pub mod snapshot_worker;
 pub mod spot_drain;
 pub mod storage_migration;
@@ -188,6 +189,9 @@ pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
+};
+pub use snapshot::{
+    verify_file as snapshot_verify_file, ReconcileOutcome, SnapshotReconcilerConfig, SnapshotRef,
 };
 pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
