@@ -41,15 +41,15 @@ use kube::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use tracing::{debug, error, info, warn};
 
 use crate::crd::StellarNode;
 use crate::error::{Error, Result};
 
 use super::bloat::BloatDetector;
-use super::coordinator::MaintenanceCoordinator;
 use super::controller::is_time_in_window;
+use super::coordinator::MaintenanceCoordinator;
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -78,8 +78,6 @@ const INGESTION_STOP_RETRY_INTERVAL_SECS: u64 = 5;
 
 /// Maximum retry attempts for ingestion stop.
 const INGESTION_STOP_MAX_RETRIES: u32 = 12;
-
-
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -298,9 +296,7 @@ impl VacuumDefrag {
     /// across quorum-connected validators.
     pub async fn acquire_lock(&self, node: &StellarNode) -> Result<bool> {
         let node_name = node.name_any();
-        let namespace = node
-            .namespace()
-            .unwrap_or_else(|| "default".to_string());
+        let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
 
         let cms: Api<ConfigMap> = Api::namespaced(self.client.clone(), &self.config.lock_namespace);
 
@@ -317,8 +313,7 @@ impl VacuumDefrag {
                 };
                 data.insert(
                     "lock".to_string(),
-                    serde_json::to_string(&lock)
-                        .map_err(|e| Error::SerializationError(e))?,
+                    serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
                 );
 
                 let cm = ConfigMap {
@@ -383,13 +378,9 @@ impl VacuumDefrag {
             "data": data
         }));
 
-        cms.patch(
-            DEFRAG_LOCK_CONFIGMAP,
-            &PatchParams::default(),
-            &patch,
-        )
-        .await
-        .map_err(Error::KubeError)?;
+        cms.patch(DEFRAG_LOCK_CONFIGMAP, &PatchParams::default(), &patch)
+            .await
+            .map_err(Error::KubeError)?;
 
         info!("Acquired defragmentation lock for node {}", node_name);
         Ok(true)
@@ -408,13 +399,9 @@ impl VacuumDefrag {
             "data": data
         }));
 
-        cms.patch(
-            DEFRAG_LOCK_CONFIGMAP,
-            &PatchParams::default(),
-            &patch,
-        )
-        .await
-        .map_err(Error::KubeError)?;
+        cms.patch(DEFRAG_LOCK_CONFIGMAP, &PatchParams::default(), &patch)
+            .await
+            .map_err(Error::KubeError)?;
 
         info!("Released defragmentation lock for node {}", node_name);
         Ok(())
@@ -425,11 +412,7 @@ impl VacuumDefrag {
         let pod_ip = self.get_node_pod_ip(node).await?;
         let url = format!("http://{}:{}/stop", pod_ip, STELLAR_CORE_HTTP_PORT);
 
-        info!(
-            "Pausing ingestion on node {} via {}",
-            node.name_any(),
-            url
-        );
+        info!("Pausing ingestion on node {} via {}", node.name_any(), url);
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(INGESTION_STOP_TIMEOUT_SECS))
@@ -478,11 +461,7 @@ impl VacuumDefrag {
         let pod_ip = self.get_node_pod_ip(node).await?;
         let url = format!("http://{}:{}/start", pod_ip, STELLAR_CORE_HTTP_PORT);
 
-        info!(
-            "Resuming ingestion on node {} via {}",
-            node.name_any(),
-            url
-        );
+        info!("Resuming ingestion on node {} via {}", node.name_any(), url);
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
@@ -511,19 +490,17 @@ impl VacuumDefrag {
 
     /// Get the pod IP for a Stellar Core node.
     async fn get_node_pod_ip(&self, node: &StellarNode) -> Result<String> {
-        let namespace = node
-            .namespace()
-            .unwrap_or_else(|| "default".to_string());
+        let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
         let name = node.name_any();
 
         let pods: Api<k8s_openapi::api::core::v1::Pod> =
             Api::namespaced(self.client.clone(), &namespace);
 
         let pod_list = pods
-            .list(&kube::api::ListParams::default().labels(&format!(
-                "app.kubernetes.io/instance={}",
-                name
-            )))
+            .list(
+                &kube::api::ListParams::default()
+                    .labels(&format!("app.kubernetes.io/instance={}", name)),
+            )
             .await
             .map_err(Error::KubeError)?;
 
@@ -587,10 +564,7 @@ impl VacuumDefrag {
     /// Calls the Stellar Core `/info` endpoint to verify the node is in a healthy
     /// state and can participate in consensus.
     pub async fn verify_integrity(&self, node: &StellarNode) -> Result<bool> {
-        info!(
-            "Verifying database integrity for node {}",
-            node.name_any()
-        );
+        info!("Verifying database integrity for node {}", node.name_any());
 
         let pod_ip = self.get_node_pod_ip(node).await?;
         let url = format!("http://{}:{}/info", pod_ip, STELLAR_CORE_HTTP_PORT);
@@ -602,7 +576,8 @@ impl VacuumDefrag {
 
         match client.get(&url).send().await {
             Ok(resp) => {
-                if resp.status().is_success() {
+                let status = resp.status();
+                if status.is_success() {
                     // Parse the info response to check if the node is synced
                     if let Ok(info) = resp.json::<serde_json::Value>().await {
                         let state = info
@@ -631,7 +606,7 @@ impl VacuumDefrag {
                 warn!(
                     "Failed to verify integrity for node {} (status {})",
                     node.name_any(),
-                    resp.status()
+                    status
                 );
                 Ok(false)
             }
@@ -763,10 +738,7 @@ impl VacuumDefrag {
                     }
                 }
                 Err(e) => {
-                    warn!(
-                        "Integrity verification error for node {}: {}",
-                        node_name, e
-                    );
+                    warn!("Integrity verification error for node {}: {}", node_name, e);
                 }
             }
         }
@@ -835,9 +807,7 @@ pub async fn run_vacuum_controller(
         // Sleep for 5 minutes between checks
         tokio::time::sleep(Duration::from_secs(300)).await;
 
-        let nodes = stellar_nodes
-            .list(&kube::api::ListParams::default())
-            .await;
+        let nodes = stellar_nodes.list(&kube::api::ListParams::default()).await;
 
         match nodes {
             Ok(node_list) => {
@@ -855,9 +825,7 @@ pub async fn run_vacuum_controller(
                             if result.success {
                                 info!(
                                     "Defragmentation successful for {}: {} tables vacuumed in {}s",
-                                    result.node_name,
-                                    result.tables_vacuumed,
-                                    result.duration_secs
+                                    result.node_name, result.tables_vacuumed, result.duration_secs
                                 );
                             } else if let Some(err) = &result.error {
                                 debug!(

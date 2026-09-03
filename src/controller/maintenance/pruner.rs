@@ -35,7 +35,7 @@ use kube::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use tracing::{debug, error, info, warn};
 
 use crate::crd::StellarNode;
@@ -251,7 +251,9 @@ impl Pruner {
         let row = sqlx::query(query)
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| Error::MaintenanceError(format!("Failed to query latest ledger: {}", e)))?;
+            .map_err(|e| {
+                Error::MaintenanceError(format!("Failed to query latest ledger: {}", e))
+            })?;
 
         let sequence: i64 = row.try_get(0).map_err(|e| {
             Error::MaintenanceError(format!("Failed to read sequence column: {}", e))
@@ -271,9 +273,7 @@ impl Pruner {
     /// across quorum-connected validators.
     pub async fn acquire_lock(&self, node: &StellarNode) -> Result<bool> {
         let node_name = node.name_any();
-        let namespace = node
-            .namespace()
-            .unwrap_or_else(|| "default".to_string());
+        let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
 
         let cms: Api<ConfigMap> = Api::namespaced(self.client.clone(), &self.config.lock_namespace);
 
@@ -290,8 +290,7 @@ impl Pruner {
                 };
                 data.insert(
                     "lock".to_string(),
-                    serde_json::to_string(&lock)
-                        .map_err(|e| Error::SerializationError(e))?,
+                    serde_json::to_string(&lock).map_err(|e| Error::SerializationError(e))?,
                 );
 
                 let cm = ConfigMap {
@@ -356,13 +355,9 @@ impl Pruner {
             "data": data
         }));
 
-        cms.patch(
-            PRUNING_LOCK_CONFIGMAP,
-            &PatchParams::default(),
-            &patch,
-        )
-        .await
-        .map_err(Error::KubeError)?;
+        cms.patch(PRUNING_LOCK_CONFIGMAP, &PatchParams::default(), &patch)
+            .await
+            .map_err(Error::KubeError)?;
 
         info!("Acquired pruning lock for node {}", node_name);
         Ok(true)
@@ -381,13 +376,9 @@ impl Pruner {
             "data": data
         }));
 
-        cms.patch(
-            PRUNING_LOCK_CONFIGMAP,
-            &PatchParams::default(),
-            &patch,
-        )
-        .await
-        .map_err(Error::KubeError)?;
+        cms.patch(PRUNING_LOCK_CONFIGMAP, &PatchParams::default(), &patch)
+            .await
+            .map_err(Error::KubeError)?;
 
         info!("Released pruning lock for node {}", node_name);
         Ok(())
@@ -398,11 +389,7 @@ impl Pruner {
         let pod_ip = self.get_node_pod_ip(node).await?;
         let url = format!("http://{}:{}/stop", pod_ip, STELLAR_CORE_HTTP_PORT);
 
-        info!(
-            "Pausing ingestion on node {} via {}",
-            node.name_any(),
-            url
-        );
+        info!("Pausing ingestion on node {} via {}", node.name_any(), url);
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(INGESTION_STOP_TIMEOUT_SECS))
@@ -451,11 +438,7 @@ impl Pruner {
         let pod_ip = self.get_node_pod_ip(node).await?;
         let url = format!("http://{}:{}/start", pod_ip, STELLAR_CORE_HTTP_PORT);
 
-        info!(
-            "Resuming ingestion on node {} via {}",
-            node.name_any(),
-            url
-        );
+        info!("Resuming ingestion on node {} via {}", node.name_any(), url);
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
@@ -484,19 +467,17 @@ impl Pruner {
 
     /// Get the pod IP for a Stellar Core node.
     async fn get_node_pod_ip(&self, node: &StellarNode) -> Result<String> {
-        let namespace = node
-            .namespace()
-            .unwrap_or_else(|| "default".to_string());
+        let namespace = node.namespace().unwrap_or_else(|| "default".to_string());
         let name = node.name_any();
 
         let pods: Api<k8s_openapi::api::core::v1::Pod> =
             Api::namespaced(self.client.clone(), &namespace);
 
         let pod_list = pods
-            .list(&kube::api::ListParams::default().labels(&format!(
-                "app.kubernetes.io/instance={}",
-                name
-            )))
+            .list(
+                &kube::api::ListParams::default()
+                    .labels(&format!("app.kubernetes.io/instance={}", name)),
+            )
             .await
             .map_err(Error::KubeError)?;
 
@@ -505,12 +486,10 @@ impl Pruner {
             .first()
             .and_then(|pod| pod.status.as_ref())
             .and_then(|s| s.pod_ip.clone())
-            .ok_or_else(|| {
-                Error::NotFound {
-                    kind: "Pod".to_string(),
-                    name: format!("{}-pod", name),
-                    namespace,
-                }
+            .ok_or_else(|| Error::NotFound {
+                kind: "Pod".to_string(),
+                name: format!("{}-pod", name),
+                namespace,
             })
     }
 
@@ -528,9 +507,9 @@ impl Pruner {
                 Error::MaintenanceError(format!("Failed to count ledgers to prune: {}", e))
             })?;
 
-        let rows_to_delete: i64 = count_row.try_get(0).map_err(|e| {
-            Error::MaintenanceError(format!("Failed to read count column: {}", e))
-        })?;
+        let rows_to_delete: i64 = count_row
+            .try_get(0)
+            .map_err(|e| Error::MaintenanceError(format!("Failed to read count column: {}", e)))?;
 
         if rows_to_delete == 0 {
             info!("No ledgers to prune");
@@ -545,9 +524,7 @@ impl Pruner {
             .bind(threshold_sequence as i64)
             .execute(&self.pool)
             .await
-            .map_err(|e| {
-                Error::MaintenanceError(format!("Failed to prune ledgers: {}", e))
-            })?;
+            .map_err(|e| Error::MaintenanceError(format!("Failed to prune ledgers: {}", e)))?;
 
         // Also prune related tables that reference history_ledgers
         let related_tables = [
@@ -559,10 +536,7 @@ impl Pruner {
         ];
 
         for table in &related_tables {
-            let delete_related = format!(
-                "DELETE FROM {} WHERE ledger_seq < $1",
-                table
-            );
+            let delete_related = format!("DELETE FROM {} WHERE ledger_seq < $1", table);
             if let Err(e) = sqlx::query(&delete_related)
                 .bind(threshold_sequence as i64)
                 .execute(&self.pool)
@@ -581,10 +555,7 @@ impl Pruner {
         info!("Verifying database integrity for node {}", node.name_any());
 
         let pod_ip = self.get_node_pod_ip(node).await?;
-        let url = format!(
-            "http://{}:{}/info",
-            pod_ip, STELLAR_CORE_HTTP_PORT
-        );
+        let url = format!("http://{}:{}/info", pod_ip, STELLAR_CORE_HTTP_PORT);
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
@@ -593,7 +564,8 @@ impl Pruner {
 
         match client.get(&url).send().await {
             Ok(resp) => {
-                if resp.status().is_success() {
+                let status = resp.status();
+                if status.is_success() {
                     // Parse the info response to check if the node is synced
                     if let Ok(info) = resp.json::<serde_json::Value>().await {
                         let state = info
@@ -621,7 +593,7 @@ impl Pruner {
                 warn!(
                     "Failed to verify integrity for node {} (status {})",
                     node.name_any(),
-                    resp.status()
+                    status
                 );
                 Ok(false)
             }
@@ -714,10 +686,7 @@ impl Pruner {
                     }
                 }
                 Err(e) => {
-                    warn!(
-                        "Integrity verification error for node {}: {}",
-                        node_name, e
-                    );
+                    warn!("Integrity verification error for node {}: {}", node_name, e);
                 }
             }
         }
@@ -738,10 +707,7 @@ impl Pruner {
 
         info!(
             "Pruning completed for node {}: deleted {} ledgers, disk usage {}% -> {}%",
-            node_name,
-            result.ledgers_deleted,
-            result.disk_usage_before,
-            result.disk_usage_after
+            node_name, result.ledgers_deleted, result.disk_usage_before, result.disk_usage_after
         );
 
         Ok(result)
@@ -771,9 +737,7 @@ pub async fn run_pruner_controller(
         // Sleep for 5 minutes between checks
         tokio::time::sleep(Duration::from_secs(300)).await;
 
-        let nodes = stellar_nodes
-            .list(&kube::api::ListParams::default())
-            .await;
+        let nodes = stellar_nodes.list(&kube::api::ListParams::default()).await;
 
         match nodes {
             Ok(node_list) => {
@@ -794,10 +758,7 @@ pub async fn run_pruner_controller(
                                     result.node_name, result.ledgers_deleted
                                 );
                             } else if let Some(err) = &result.error {
-                                debug!(
-                                    "Pruning skipped/failed for {}: {}",
-                                    result.node_name, err
-                                );
+                                debug!("Pruning skipped/failed for {}: {}", result.node_name, err);
                             }
                         }
                         Err(e) => {
@@ -833,15 +794,15 @@ mod tests {
         assert_eq!(config.lock_namespace, "stellar-system");
     }
 
-    #[test]
-    fn test_calculate_pruning_threshold() {
+    #[tokio::test]
+    async fn test_calculate_pruning_threshold() {
         let config = PrunerConfig {
             min_ledger_retention: 100_000,
             ..Default::default()
         };
 
         let pool = PgPool::connect_lazy("postgres://localhost/test").unwrap();
-        let client = Client::try_default().unwrap();
+        let client = Client::try_default().await.unwrap();
         let pruner = Pruner::new(client, pool, config);
 
         assert_eq!(pruner.calculate_pruning_threshold(500_000), 400_000);

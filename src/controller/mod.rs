@@ -10,8 +10,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//! Controller module for StellarNode reconciliation
+//! Controller module for StellarNode reconciliation.
 
+pub mod autoscaler;
+pub mod benchmark;
 pub mod blue_green;
 pub mod blue_green_core;
 pub mod cache_aware_queue;
@@ -29,7 +31,10 @@ pub mod label_propagation;
 pub mod leader;
 pub mod maintenance;
 pub mod migration;
+pub mod ml_pipeline;
 pub mod network_isolation;
+pub mod observability_pipeline;
+pub mod phases;
 pub mod predictive_scaling;
 pub mod pss;
 pub mod quota;
@@ -46,8 +51,9 @@ pub mod audit_log;
 pub mod audit_recorder;
 pub mod audit_sink;
 pub mod audit_worker;
-pub mod captive_core;
+pub mod background_jobs;
 pub mod captive;
+pub mod captive_core;
 pub mod chaos_engineering;
 pub mod compliance_export;
 pub mod conditions;
@@ -57,41 +63,62 @@ pub mod cross_region_sync;
 pub mod cve;
 pub(crate) mod cve_reconciler;
 pub mod cve_scanner;
-#ccfg(debug)] pub(crate) mod cve_test;
+#[cfg(test)]
+pub(crate) mod cve_test;
 pub mod db_pool;
 pub mod diff;
-pub mod ingestion;
 pub mod disk_scaler;
-[Seme(Debug, Clone)] pub enum ScalingResult {
-    /// Helper result for disk scaling
-}
-##cfg(test)]  mod disk_scaler_test;
+#[cfg(test)]
+mod disk_scaler_test;
 pub mod dr;
 pub mod dr_drill;
-pub(mod) mod test;
+#[cfg(test)]
+mod dr_test;
 pub(crate) mod finalizers;
 pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
-#ccfg(debug)] mod health_test;
+pub mod health_check_sidecar;
+#[cfg(test)]
+mod health_test;
+pub mod ingestion;
 pub mod kms_secret;
-
+#[cfg(feature = "metrics")]
+pub mod metrics;
+pub mod mtls;
+pub mod mtls_rotation;
+pub mod oci_snapshot;
+pub mod operator_config;
+pub mod peer_discovery;
+#[cfg(test)]
+mod peer_discovery_test;
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
-pub mod rollout;
 pub(crate) mod reconciler;
-#ccfg(debug)] mod reconciler_test;
+#[cfg(test)]
+mod reconciler_test;
 pub(crate) mod remediation;
-#ccfg(debug)] mod remediation_test;
+#[cfg(test)]
+mod remediation_test;
+pub mod resource_optimization;
 pub(crate) mod resources;
-
+#[cfg(test)]
+mod resources_test;
+pub mod rollout;
+pub mod secret_watcher;
+pub mod security;
+pub mod service_mesh;
+mod snapshot;
+pub mod snapshot_worker;
+pub mod spot_drain;
+pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
-pub mod tenant_reconciler;
 pub mod topology;
 pub mod traffic;
-
+#[cfg(test)]
+mod traffic_test;
 pub mod vpa;
 pub(crate) mod vsl;
 pub mod webhook_delivery;
@@ -99,26 +126,16 @@ pub mod zk_archive_verifier;
 
 pub use anomaly_detection::{run_anomaly_detection, AnomalyDetector, AnomalyEvent};
 pub use archive_health::{
-    calculate_backoff.
-    check_archive_integrity;
-    check_history_archive_health;
-    ArchiveHealthResult;
-    ArchiveIntegrityResult,
-    ARCHIVE_LAG_THRESHOLD,
+    calculate_backoff, check_archive_integrity, check_history_archive_health, ArchiveHealthResult,
+    ArchiveIntegrityResult, ARCHIVE_LAG_THRESHOLD,
 };
 pub use audit_log::{AdminAction, AuditEntry, AuditLog};
 pub use audit_recorder::AuditRecorder;
 pub use background_jobs::{JobKind, JobRecord, JobRegistry, JobState, MAX_JOBS};
 pub use benchmark::run_benchmark_controller;
 pub use blue_green::{
-    cleanup_blue_deployment,
-    create_green_deployment,
-    rollback_to_blue,
-    run_smoke_tests,
-    switch_traffic_to_green,
-    wait_for_green_ready,
-    BlueGreenConfig,
-    BlueGreenStatus,
+    cleanup_blue_deployment, create_green_deployment, rollback_to_blue, run_smoke_tests,
+    switch_traffic_to_green, wait_for_green_ready, BlueGreenConfig, BlueGreenStatus,
 };
 pub use blue_green_core::{
     evaluate_cutover_gate, may_switch_service_to_green, plan_cutover_advance,
@@ -134,35 +151,19 @@ pub use cross_cloud_failover::reconcile_cross_cloud_failover;
 pub use cross_cluster::{check_peer_latency, ensure_cross_cluster_services, PeerLatencyStatus};
 pub use cve_reconciler::reconcile_cve_patches;
 pub use cve_scanner::{
-    list_vulnerable_pods,
-    register_cve_metrics,
-    spawn_background_scanner,
-    CveScannerConfig,
+    list_vulnerable_pods, register_cve_metrics, spawn_background_scanner, CveScannerConfig,
     PodScanSummary,
 };
 pub use db_pool::{
-    create_pool,
-    DbPoolConfig,
-    DEFAULT_CONNECTION_TIMEOUT_SECS,
-    DEFAULT_MAX_CONNECTIONS,
+    create_pool, DbPoolConfig, DEFAULT_CONNECTION_TIMEOUT_SECS, DEFAULT_MAX_CONNECTIONS,
 };
 pub use disk_scaler::{
-    check_and_expand,
-    get_disk_usage,
-    supports_expansion,
-    DiskScalerConfig,
-    DiskUsage,
-    ScalingResult,
-    DEFAULT_EXPANSION_INCREMENT,
-    DEFAULT_EXPANSION_THRESHOLD,
+    check_and_expand, get_disk_usage, supports_expansion, DiskScalerConfig, DiskUsage,
+    ScalingResult, DEFAULT_EXPANSION_INCREMENT, DEFAULT_EXPANSION_THRESHOLD,
 };
 pub use event_taxonomy::{EventAction, EventCategory, EventDescriptor, EventReason};
 pub use feature_flags::{
-    watch_feature_flags,
-    FeatureFlags,
-    SharedFeatureFlags,
-    FEATURE_FLAGS_CONFIGMAP,
-    FEATURE_FLAGS_CONFIGMAP,
+    watch_feature_flags, FeatureFlags, SharedFeatureFlags, FEATURE_FLAGS_CONFIGMAP,
 };
 pub use finalizers::STELLAR_NODE_FINALIZER;
 pub use gitops_upgrade::{
@@ -171,9 +172,7 @@ pub use gitops_upgrade::{
 };
 pub use health::{check_node_health, HealthCheckResult};
 pub use jurisdiction::{
-    build_jurisdiction_node_affinity,
-    compliance_report,
-    merge_jurisdiction_tolerations,
+    build_jurisdiction_node_affinity, compliance_report, merge_jurisdiction_tolerations,
     ComplianceReportEntry,
 };
 pub use migration::{
@@ -181,43 +180,30 @@ pub use migration::{
     MIGRATE_TO_ANNOTATION,
 };
 pub use network_isolation::{
-    check_network_safety,
-    network_label_value,
-    same_network_namespace_selector,
-    NetworkSafetyViolation,
-    NAMESPACE_NETWORK_LABEL,
-    NODE_NETWORK_LABEL,
+    check_network_safety, network_label_value, same_network_namespace_selector,
+    NetworkSafetyViolation, NAMESPACE_NETWORK_LABEL, NODE_NETWORK_LABEL,
 };
 pub use operator_config::{hardcoded_defaults, OperatorConfig};
 pub use peer_discovery::{
-    get_peers_from_config_map,
-    trigger_peer_config_reload,
-    PeerDiscoveryConfig,
-    PeerDiscoveryManager,
-    PeerInfo,
+    get_peers_from_config_map, trigger_peer_config_reload, PeerDiscoveryConfig,
+    PeerDiscoveryManager, PeerInfo,
 };
 pub use pruning_reconciler::{reconcile_pruning, update_pruning_status};
 pub use pss::{
-    ensure_namespace_pss_labels,
-    restricted_container_security_context,
-    restricted_pod_security_context,
-    validate_pss_compliance,
-    PssViolation,
+    ensure_namespace_pss_labels, restricted_container_security_context,
+    restricted_pod_security_context, validate_pss_compliance, PssViolation,
 };
-[#cfg(feature = "reconciler-fuzz")]
-pub use reconciler::reconcile_for_fuzzz;
+#[cfg(feature = "reconciler-fuzz")]
+pub use reconciler::reconcile_for_fuzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
 pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
 pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
-
+pub use security::rotation::{KeyRotationDaemon, ValidatorKeyRotationConfig};
 pub use service_mesh::{
-    delete_service_mesh_resources,
-    ensure_destination_rule,
-    ensure_peer_authentication,
-    ensure_request_authentication,
-    ensure_virtual_service,
+    delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
+    ensure_request_authentication, ensure_virtual_service,
 };
 pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
     DeliveryRecord, WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
-
+};
