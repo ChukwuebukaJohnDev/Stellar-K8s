@@ -310,6 +310,27 @@ spec:
                       format: int32
                       default: 0
                       description: Max snapshots to retain per node. 0 means no limit.
+                backupConfig:
+                  type: object
+                  description: Pre-upgrade backup configuration for Validator PVC snapshots. When set, the operator snapshots the PVC before applying a new version.
+                  properties:
+                    volumeSnapshotClassName:
+                      type: string
+                      description: VolumeSnapshotClass name. If unset, the default class for the PVC's driver is used.
+                    flushBeforeSnapshot:
+                      type: boolean
+                      default: false
+                      description: If true, attempt to flush/lock the Stellar DB briefly before creating the snapshot.
+                    readyTimeoutSeconds:
+                      type: integer
+                      format: int64
+                      default: 300
+                      minimum: 0
+                      description: Maximum time in seconds to wait for the snapshot to become ReadyToUse before failing the upgrade.
+                    encryptionKeyRef:
+                      type: string
+                      nullable: true
+                      description: Reference to a Cloud KMS key for encrypting the snapshot.
                 restoreFromSnapshot:
                   type: object
                   description: Bootstrap this node from an existing VolumeSnapshot (Validator only). PVC is created from the snapshot.

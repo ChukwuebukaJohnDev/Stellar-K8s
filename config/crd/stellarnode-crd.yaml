@@ -1342,6 +1342,29 @@ spec:
                     nullable: true
                     type: string
                 type: object
+              backupConfig:
+                description: Pre-upgrade backup configuration for Validator PVC snapshots. When set, the operator snapshots the PVC before applying a new version.
+                nullable: true
+                properties:
+                  encryptionKeyRef:
+                    description: Reference to a Cloud KMS key for encrypting the snapshot.
+                    nullable: true
+                    type: string
+                  flushBeforeSnapshot:
+                    default: false
+                    description: If true, the operator will attempt to flush/lock the Stellar database briefly before creating the snapshot.
+                    type: boolean
+                  readyTimeoutSeconds:
+                    default: 300
+                    description: Maximum time in seconds to wait for the snapshot to become ReadyToUse before failing the upgrade.
+                    format: uint64
+                    minimum: 0.0
+                    type: integer
+                  volumeSnapshotClassName:
+                    description: VolumeSnapshotClass name. If unset, the default class for the PVC's driver is used.
+                    nullable: true
+                    type: string
+                type: object
               sorobanConfig:
                 description: Soroban RPC server configuration
                 nullable: true

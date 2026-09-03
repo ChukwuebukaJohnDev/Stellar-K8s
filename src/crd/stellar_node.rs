@@ -23,7 +23,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::types::*;
+
 
 /// Structured validation error for `StellarNodeSpec`
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -250,6 +250,11 @@ pub struct StellarNodeSpec {
     /// Enables zero-downtime backups and creating new nodes from snapshots.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snapshot_schedule: Option<SnapshotScheduleConfig>,
+
+    /// Pre-upgrade backup configuration for Validator PVC snapshots.
+    /// When set, the operator snapshots the PVC before applying a new version.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup_config: Option<BackupConfig>,
 
     /// Bootstrap this node from an existing VolumeSnapshot instead of an empty volume (Validator only).
     /// The PVC will be created from the specified snapshot for near-instant startup.
@@ -556,6 +561,7 @@ impl Default for StellarNodeSpec {
             topology_spread_constraints: None,
             cve_handling: None,
             snapshot_schedule: None,
+            backup_config: None,
             restore_from_snapshot: None,
             read_replica_config: None,
             db_maintenance_config: None,
@@ -902,8 +908,10 @@ impl StellarNodeSpec {
                         }
                     }
                 }
-                // Snapshot schedule and restore only apply to Validators (ledger data)
-                if (self.snapshot_schedule.is_some() || self.restore_from_snapshot.is_some())
+                // Snapshot schedule, pre-upgrade backups, and restore only apply to Validators (ledger data)
+                if (self.snapshot_schedule.is_some()
+                    || self.backup_config.is_some()
+                    || self.restore_from_snapshot.is_some())
                     && self
                         .restore_from_snapshot
                         .as_ref()
@@ -916,13 +924,30 @@ impl StellarNodeSpec {
                         "Set spec.restoreFromSnapshot.volumeSnapshotName to an existing VolumeSnapshot name.",
                     ));
                 }
+                if let Some(backup_config) = &self.backup_config {
+                    if backup_config
+                        .volume_snapshot_class_name
+                        .as_deref()
+                        .map(|v| v.is_empty())
+                        .unwrap_or(false)
+                    {
+                        errors.push(SpecValidationError::new(
+                            "spec.backupConfig.volumeSnapshotClassName",
+                            "volumeSnapshotClassName must not be empty when set",
+                            "Provide a valid CSI VolumeSnapshotClass name or leave the field unset to use the default class.",
+                        ));
+                    }
+                }
             }
             NodeType::Horizon => {
-                if self.snapshot_schedule.is_some() || self.restore_from_snapshot.is_some() {
+                if self.snapshot_schedule.is_some()
+                    || self.backup_config.is_some()
+                    || self.restore_from_snapshot.is_some()
+                {
                     errors.push(SpecValidationError::new(
-                        "spec.snapshotSchedule / spec.restoreFromSnapshot",
-                        "snapshot and restore are only supported for Validator nodes",
-                        "Remove spec.snapshotSchedule and spec.restoreFromSnapshot for Horizon nodes.",
+                        "spec.snapshotSchedule / spec.backupConfig / spec.restoreFromSnapshot",
+                        "snapshot, pre-upgrade backup, and restore are only supported for Validator nodes",
+                        "Remove spec.snapshotSchedule, spec.backupConfig, and spec.restoreFromSnapshot for Horizon nodes.",
                     ));
                 }
                 // Horizon config required
@@ -963,11 +988,14 @@ impl StellarNodeSpec {
                 }
             }
             NodeType::SorobanRpc => {
-                if self.snapshot_schedule.is_some() || self.restore_from_snapshot.is_some() {
+                if self.snapshot_schedule.is_some()
+                    || self.backup_config.is_some()
+                    || self.restore_from_snapshot.is_some()
+                {
                     errors.push(SpecValidationError::new(
-                        "spec.snapshotSchedule / spec.restoreFromSnapshot",
-                        "snapshot and restore are only supported for Validator nodes",
-                        "Remove spec.snapshotSchedule and spec.restoreFromSnapshot for SorobanRpc nodes.",
+                        "spec.snapshotSchedule / spec.backupConfig / spec.restoreFromSnapshot",
+                        "snapshot, pre-upgrade backup, and restore are only supported for Validator nodes",
+                        "Remove spec.snapshotSchedule, spec.backupConfig, and spec.restoreFromSnapshot for SorobanRpc nodes.",
                     ));
                 }
                 // Soroban config required
