@@ -375,12 +375,4 @@ probe override.
 
 ## References
 
-- [kubectl-stellar Plugin](../kubectl-plugin.md)
-- [DR Failover Guide](../dr-failover.md) (region-level failover — different scope)
-- [Health Checks](../health-checks.md)
-- [Volume Snapshots](../volume-snapshots.md)
-- [Forensic Snapshot](../forensic-snapshot.md)
-- [Pod Disruption Budget](../pod-disruption-budget.md)
-- [Finalizers ADR](../adr/0003-kube-rs-finalizers.md)
-- [Incident Post-Mortem Template](../incident-response/post-mortem.md)
-- Stellar Core admin guide: https://developers.stellar.org/docs/validators/admin-guide
+
