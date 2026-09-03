@@ -402,6 +402,8 @@ impl ControllerState {
 ///         log_reload_handle: reload_handle,
 ///         log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
 ///         last_event_received: Arc::new(AtomicU64::new(0)),
+///         job_registry: Arc::new(Default::default()),
+///         audit_log: Arc::new(Default::default()),
 ///         job_registry: Arc::new(stellar_k8s::controller::background_jobs::JobRegistry::new()),
 ///         audit_log: Arc::new(stellar_k8s::controller::audit_log::AuditLog::new()),
 ///         audit_recorder: Arc::new(stellar_k8s::controller::AuditRecorder::new(
