@@ -1,16 +1,4 @@
-// Copyright 2024 Stellar-K8s Contributors
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//! Controller module for StellarNode reconciliation.
+
 
 pub mod autoscaler;
 pub mod benchmark;
@@ -35,6 +23,7 @@ pub mod network_isolation;
 pub mod observability_pipeline;
 pub mod phases;
 pub mod predictive_scaling;
+pub mod pdb;
 pub mod pss;
 pub mod quota;
 pub mod registry_controller;
@@ -61,47 +50,46 @@ pub mod cross_region_sync;
 pub mod cve;
 pub(crate) mod cve_reconciler;
 pub mod cve_scanner;
-#[cfg(test)]
+[cfg(test)]
 pub(crate) mod cve_test;
 pub mod db_pool;
 pub mod diff;
 pub mod disk_scaler;
-#[cfg(test)]
+[cfg(test)]
 mod disk_scaler_test;
 pub mod dr;
 pub mod dr_drill;
-#[cfg(test)]
+[cfg(test)]
 mod dr_test;
 pub(crate) mod finalizers;
 pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
-pub mod health_check_sidecar;
-#[cfg(test)]
+
 mod health_test;
 pub mod ingestion;
 pub mod kms_secret;
-#[cfg(feature = "metrics")]
+[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod mtls;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
 pub mod operator_config;
 pub mod peer_discovery;
-#[cfg(test)]
+[cfg(test)]
 mod peer_discovery_test;
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
 pub(crate) mod reconciler;
-#[cfg(test)]
+[cfg(test)]
 mod reconciler_test;
 pub(crate) mod remediation;
-#[cfg(test)]
+[cfg(test)]
 mod remediation_test;
 pub mod resource_optimization;
 pub(crate) mod resources;
-#[cfg(test)]
+[cfg(test)]
 mod resources_test;
 pub mod rollout;
 pub mod secret_watcher;
@@ -116,7 +104,7 @@ pub(crate) mod sync_state_monitor;
 
 pub mod topology;
 pub mod traffic;
-#[cfg(test)]
+[cfg(test)]
 mod traffic_test;
 pub mod vpa;
 pub(crate) mod vsl;
@@ -192,12 +180,10 @@ pub use pss::{
     ensure_namespace_pss_labels, restricted_container_security_context,
     restricted_pod_security_context, validate_pss_compliance, PssViolation,
 };
-#[cfg(feature = "reconciler-fuzz")]
-pub use reconciler::reconcile_for_fuzz;
+[cfg(feature = "reconciler-fuzz")]
+pub use reconciler::reconcile_for_fuzzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
-pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
-pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
-pub use security::rotation::{KeyRotationDaemon, ValidatorKeyRotationConfig};
+
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
