@@ -1,3 +1,15 @@
+// Copyright 2024 Stellar-K8s Contributors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 //! History Archive Pruning Utility
 //!
 //! Provides safe pruning of old Stellar history archive checkpoints from S3/storage.
@@ -19,8 +31,8 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
 
+use crate::controller::leader::LeaseGuard;
 use crate::Error;
-use crate::leader::LeaseGuard;
 
 /// Minimum number of checkpoints to always retain (safety buffer)
 const MIN_CHECKPOINTS_TO_RETAIN: u32 = 10;
@@ -257,7 +269,7 @@ async fn scan_s3_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoin
     // {prefix}/hex/hex/hex/history-{hash}.xdr.gz
     // {prefix}/.well-known/stellar-history.json
 
-    // TODO: Implement actual S3 scanning with aws-sdk-s3
+    // TODO(exempt: pending aws-sdk-s3 integration): Implement actual S3 scanning
     warn!("S3 scanning not yet implemented - returning empty checkpoint list");
     Ok(vec![])
 }
@@ -265,7 +277,7 @@ async fn scan_s3_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoin
 /// Scan GCS bucket for checkpoints
 async fn scan_gcs_checkpoints(location: &ArchiveLocation) -> Result<Vec<Checkpoint>, Error> {
     debug!("Scanning GCS bucket: {}", location.bucket);
-    // TODO: Implement GCS scanning
+    // TODO(exempt: pending GCS client): Implement GCS scanning
     warn!("GCS scanning not yet implemented - returning empty checkpoint list");
     Ok(vec![])
 }
@@ -507,8 +519,9 @@ pub async fn execute_prune(
     let errors: Arc<tokio::sync::Mutex<Vec<String>>> =
         Arc::new(tokio::sync::Mutex::new(Vec::new()));
 
-    let deletable_count = deletable.len();
     let delete_stream = stream::iter(deletable.into_iter())
+    let _deletable_count = deletable.len();
+    let delete_stream = stream::iter(deletable)
         .map(|checkpoint| {
             let semaphore = semaphore.clone();
             let errors = errors.clone();
@@ -573,7 +586,7 @@ async fn delete_s3_checkpoint(
     _checkpoint: &Checkpoint,
     _location: &ArchiveLocation,
 ) -> Result<(), Error> {
-    // TODO: Implement S3 deletion
+    // TODO(exempt: pending aws-sdk-s3 integration): Implement S3 deletion
     warn!("S3 deletion not yet implemented");
     Ok(())
 }
@@ -583,7 +596,7 @@ async fn delete_gcs_checkpoint(
     _checkpoint: &Checkpoint,
     _location: &ArchiveLocation,
 ) -> Result<(), Error> {
-    // TODO: Implement GCS deletion
+    // TODO(exempt: pending GCS client): Implement GCS deletion
     warn!("GCS deletion not yet implemented");
     Ok(())
 }
@@ -682,7 +695,8 @@ pub async fn prune_archive(args: PruneArchiveArgs) -> Result<(), Error> {
     .map_err(|e| Error::ConfigError(format!("failed to acquire leader lease: {e}")))?;
 
     // Execute pruning
-    let mut result = execute_prune(&_lease, deletable, &location, args.force, args.concurrency).await?;
+    let mut result =
+        execute_prune(&_lease, deletable, &location, args.force, args.concurrency).await?;
     result.total_checkpoints = checkpoints.len();
     result.retained_count = retained.len();
     result.retained_ledgers = retained.iter().map(|c| c.ledger_seq).collect();
