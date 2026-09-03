@@ -54,6 +54,29 @@ Node colors indicate health: green is synced, amber is degraded, and red is fall
 ```bash
 npm test
 npm run build
+npm run matrix:perf
 ```
 
 The model tests exercise both snapshot and message ingestion. The browser performance target is validated with the mock harness and browser devtools or a production preview build; the renderer avoids per-edge/per-node React elements and limits device pixel ratio to reduce GPU pressure.
+
+## Fee Estimator Explorer
+
+The **Fee explorer** view (top bar toggle) visualizes ledger base fee trends and recommends priority fee-bump rates in real time.
+
+- **Time-series chart** shows average ledger base fees over `1h` / `6h` / `24h` / `7d` windows. The SVG chart subscribes to the fee feed directly and keeps its own state, so live ticks update the chart without re-rendering the surrounding explorer or topology UI.
+- **Priority tiers** (Low / Medium / High) are recomputed from the live base fee and a congestion factor (`recent mean ÷ baseline mean`). Surge spikes raise all recommended `maxFee` values.
+- **Fee calculator** projects classic inclusion fees plus Soroban resource fees (CPU instructions, read/write bytes, events) and applies the selected tier multiplier to suggest a fee-bump `maxFee`.
+
+Run the deterministic mock fee stream (24h of history plus scheduled spike hours) in a second terminal:
+
+```bash
+npm run mock:fees
+```
+
+Then open **Fee explorer** (defaults to the mock stream). Customize with:
+
+```bash
+node scripts/mock-fee-stream.mjs --serve --history-hours 48 --spike-hours 9,21 --interval 1000
+```
+
+Without `--serve` the generator emits newline-delimited JSON to stdout for replay. Live mode reads fee-enriched frames from `/api/v1/quorum/topology/stream`; when a frame carries no fee field, the feed infers a base fee from `tps`. The estimator model (`src/fees/feeModel.js`) and its tests (`npm test`) validate that historical fee spike data moves the congestion level and recommended tiers.
