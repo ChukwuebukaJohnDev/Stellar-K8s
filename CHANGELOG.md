@@ -3,6 +3,150 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.7.0 (2026-09-03) [minor]
+
+• Merge pull request #158 from Goodnessoj/issue-118-key-rotation-daemon
+✨ feat: add validator key rotation daemon
+• Merge pull request #167 from Ade-Pheebs/feat/94-soroban-event-stream-inspector
+✨ feat(frontend): Real-Time Soroban Contract Event Stream Inspector [#94]
+🐛 fix: repair rebased upstream build blockers
+✨ feat(security): add validator key rotation daemon
+📝 chore(build): prepare key rotation dependencies
+• Merge pull request #160 from habnark/feat/95-storage-explorer
+✨ feat(frontend): add persistent volume storage & I/O benchmark explore…
+• Merge pull request #162 from Ayodele06/feat/merkle-tree-state-proof-verification
+✨ feat(contracts): Merkle Tree State Proof Verification Library in Soroban Rust
+• Merge branch 'main' into feat/merkle-tree-state-proof-verification
+• Merge pull request #164 from chi797/feat/122-soroban-inspector
+• Feat/122 soroban inspector
+• Merge branch 'main' of https://github.com/agnesnaomiolim-cloud/Stellar-K8s into feat/merkle-tree-state-proof-verification
+✨ feat(frontend): add real-time Soroban contract event stream inspector
+• Closes #94
+• Implement a high-performance, real-time Soroban contract event stream
+• inspector as a standalone React + TypeScript Vite application.
+• Key modules introduced:
+• - frontend/services/event_stream.ts
+• - frontend/inspector/events/ (EventTable, FilterControls, JSONModal, xdr_decoder)
+• Features:
+• - WebSocket event streaming with rAF batching (100+ events/sec, no UI lag)
+• - Virtualized table rendering (custom useVirtualList hook, renders ~20 DOM rows regardless of buffer size)
+• - XDR decoder for all 22 Soroban ScVal types (BigInt precision for 64/128/256-bit integers)
+• - Filter controls: Contract ID, Event Topic, Ledger range, Event type
+• - JSON inspector modal with syntax highlighting, focus trap, copy-to-clipboard
+• - Performance profiling overlay (EPS meter, render frame budget)
+• - Synthetic 1000-event validation: 2000/2000 XDR fields correct, all filters < 1ms
+✨ feat: Add Soroban Contract Bytecode Inspector Dashboard
+✨ feat: Zero-Knowledge Groth16 Proof Verifier (#68)
+✨ feat(contracts): add Merkle Tree state-proof verification library
+• Implements a Soroban-native Merkle Tree proof verification library in
+• pure Rust with no recursion, resolving issue #34.
+• What is added:
+• contracts/merkle-verifier/src/proof.rs
+• - Hash/Side/ProofNode/MerkleProof types for single-path proofs
+• - MultiLeaf/MultiProof types for multi-leaf batch proofs
+• - hash_leaf(data) SHA-256 leaf digest helper
+• - verify_proof() iterative O(log N) single-path verifier
+• - verify_multi_proof() iterative O(k log N) multi-proof verifier
+•   compatible with Bitcoin-SPV / OpenZeppelin ordering
+• - 9 unit tests covering valid proofs, tampered leaves, tampered
+•   siblings, empty inputs, non-power-of-two trees, depth-32 scale test
+• contracts/merkle-verifier/src/lib.rs
+• - Crate root with full module doc and public re-exports
+• contracts/merkle-verifier/benches/proof_bench.rs
+• - Benchmark binary measuring ns/proof across depths 4-20 confirming
+•   O(log N) instruction scaling
+• Cargo.toml (root)
+• - Added contracts/merkle-verifier to workspace members
+• - Fixed pre-existing profile parse error (lto/panic not valid in
+•   package-level profiles in Cargo 1.83+)
+• Closes #34
+✨ feat: implement token bonding curve continuous tokenomics primitive (#70)
+✨ feat(frontend): add persistent volume storage & I/O benchmark explorer (#95)
+• Adds the storage utilization explorer requested in #95: time-series charts
+• for PVC disk usage, read/write throughput, and I/O wait latency, with
+• predictive saturation-date projections and an interactive benchmark
+• trigger.
+• Repo investigation before writing anything: this is primarily a Rust
+• operator (Cargo.toml/src) with two existing frontend surfaces — a static
+• HTML dashboard served in-process by src/rest_api/dashboard_ui.html (React
+• via CDN, no build step) and a separate Vite+React+JS app at
+• frontend/analytics/ (3D SCP topology, proxies /api to the operator's REST
+• server on :9090). Neither has TypeScript, Chart.js, or Recharts, and the
+• backend (src/rest_api) exposes only current-value node metrics
+• (dashboard_handlers::get_node_metrics) and a generic node-action POST
+• endpoint (execute_node_action) — nothing that serves historical per-PVC
+• time series or accepts a benchmark-job trigger. The issue's own "Impacted
+• Files" list (frontend/storage/explorer/, frontend/components/
+• metrics_chart.tsx) scopes this to frontend-only, so this PR builds a new
+• Vite+React+TypeScript app against a documented, not-yet-implemented REST
+• contract, backed by injected fixture data — see "Scope & data source"
+• below.
+• New files:
+• - frontend/components/metrics_chart.tsx — shared, app-agnostic Recharts
+•   wrapper: multi-series time-series lines, an optional dashed projected
+•   trend-line overlay (merged onto the sample data's timestamp axis so a
+•   forecast extending past the last historical point still renders), and an
+•   optional threshold reference line with a warning badge/border state. Has
+•   no dependency on the storage explorer app so other frontend/* apps (e.g.
+•   frontend/analytics) can reuse it.
+• - frontend/storage/explorer/ — new Vite+React+TS app:
+•   - src/StorageExplorer.tsx: page composing three MetricsChart instances
+•     (Disk Usage %, Read/Write Throughput, I/O Wait Latency), a PVC/range
+•     selector, a saturation warning banner, and the "Run Storage I/O
+•     Benchmark" trigger (POSTs to start a job, then polls it to completion
+•     and renders IOPS/throughput/latency results).
+•   - src/lib/saturation.ts: pure ordinary-least-squares projection over
+•     historical diskUsagePercent samples, projecting the date a configurable
+•     threshold (default 100%) is crossed and flagging a warning when that
+•     falls within a configurable window (default 14 days). Order-independent
+•     (sorts internally), handles flat/decreasing growth (no projection) and
+•     <2-sample input.
+•   - src/api/storageMetrics.ts: typed API client documenting the REST
+•     contract this app is built against (GET /api/v1/storage/pvcs, GET
+•     .../pvcs/:ns/:name/metrics?range=, POST .../pvcs/:ns/:name/benchmark,
+•     GET .../benchmarks/:jobId), following this repo's existing
+•     /api/v1/... and response-shape conventions from dashboard_handlers.rs
+•     and job_handlers.rs.
+•   - src/mocks/fixtures.ts: deterministic multi-day sample generators,
+•     including a "critical" volume whose growth rate is steep enough to trip
+•     the saturation warning — the data this app runs on by default (see
+•     below), and what the tests use for the issue's validation requirement.
+•   - Tests: saturation.test.ts (projection math, including the exact
+•     "impending exhaustion" shape called for by the issue) and
+•     StorageExplorer.test.tsx (renders all three charts; shows the warning
+•     banner + badge for a steep-growth fixture and not for a healthy one;
+•     runs a benchmark end-to-end against a mock API).
+• Scope & data source (read before wiring to production):
+• This app runs entirely against injected/mock fixture data by default
+• (VITE_USE_MOCKS unset or "true") because the backend routes it's built
+• against don't exist yet — implementing them was out of this issue's
+• declared scope. Set VITE_USE_MOCKS=false once src/rest_api grows the
+• /api/v1/storage/* handlers documented in storageMetrics.ts (a natural
+• follow-up, mirroring dashboard_handlers.rs's existing patterns). This
+• keeps the explorer, its charts, and its saturation warnings fully
+• demonstrable and testable today without a live cluster or Prometheus
+• instance, per the issue's own validation ask ("supply metric data
+• indicating impending volume exhaustion and verify the interface displays
+• accurate warning indicators").
+• Validation: npm install could not complete in this sandbox — disk is at
+• 100% (0 bytes free of 136GB; confirmed via `df -h`), the same genuine,
+• non-code environment blocker hit earlier for this session's Rust/Cargo
+• work, so npm test / tsc / vitest could not actually be run or their output
+• captured here. In its place: every file was manually re-read for
+• correctness, and two real bugs this review caught were fixed before commit
+• — a wrong relative import depth (metrics_chart.tsx is three directories up
+• from src/, not two — verified with a `path.relative` check, not just
+• by eye) and a benchmark-poll effect that wouldn't fire its first check
+• until a full interval had elapsed (fixed to poll immediately on start,
+• which also removes a race against the test's waitFor). A ResizeObserver
+• stub was added to the test setup proactively, since Recharts'
+• ResponsiveContainer depends on it and jsdom doesn't implement it.
+• Screenshots (required by the issue's review process) could not be captured
+• for the same reason — no browser is available in this sandbox; the README
+• explains how to reproduce the warning state via `npm run dev`.
+• Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+
+
 ## Chart v2.6.0 (2026-09-02) [minor]
 
 • Merge pull request #165 from Akinloluwa20/fix/db-compaction-daemon-issues
