@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## Chart v2.11.1 (2026-09-03) [patch]
+
+• Merge pull request #187 from Nwapu-TrustJah/fix/issue-76-backend-dynamic-pod-disruption-budget-pdb-auto
+🐛 fix: dynamic PDB auto-tuning controller for quorum-safe node drains
+• Merge branch 'main' into fix/issue-76-backend-dynamic-pod-disruption-budget-pdb-auto
+• Merge pull request #134 from CollinsC1O/WebAssembly
+• [Contract] Implement WebAssembly Fail-Open Caching Layer for Soroban RPC State Reads 
+• Merge branch 'main' into WebAssembly
+• fix cl checks
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+🐛 fix: ## [Backend] Dynamic Pod Disruption Budget (PDB) Auto-Tuning (#76)
+• [Contract] Implement WebAssembly Fail-Open Caching Layer for Soroban RPC State Reads
+
+
 ## Chart v2.11.0 (2026-09-03) [minor]
 
 • Merge pull request #128 from temisan0x/feat/issue-48-topology-spread-enforcer
