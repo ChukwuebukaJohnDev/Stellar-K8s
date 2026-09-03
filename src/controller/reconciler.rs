@@ -514,12 +514,62 @@ pub async fn run_controller(state: Arc<ControllerState>) -> Result<()> {
         }
     });
 
+    // Start the DB Compaction Daemon in the background.
+    // The daemon is cron-triggered and coordinates scheduled database
+    // vacuums and ledger pruning across nodes without downtime. It runs in
+    // dry mode (scheduling only) when no DATABASE_URL is configured.
+    let compaction_pool = match std::env::var("DATABASE_URL") {
+        Ok(url) => match sqlx::postgres::PgPoolOptions::new()
+            .max_connections(2)
+            .acquire_timeout(Duration::from_secs(10))
+            .connect(&url)
+            .await
+        {
+            Ok(pool) => Some(pool),
+            Err(e) => {
+                warn!(
+                    "Failed to connect to DATABASE_URL for compaction daemon: {e}; \
+                     running in dry mode"
+                );
+                None
+            }
+        },
+        Err(_) => None,
+    };
+    let compaction_daemon = Arc::new(maintenance::CompactionDaemon::new(
+        client.clone(),
+        state.event_reporter.clone(),
+        compaction_pool,
+        state.watch_namespace.clone(),
+        Some(state.job_registry.clone()),
+    ));
+    tokio::spawn(async move {
+        if let Err(e) = compaction_daemon.run().await {
+            error!("DB Compaction Daemon stopped with error: {}", e);
+        }
+    });
+
     // Start Audit Worker if enabled
     if state.operator_config.audit.enabled {
         let audit_worker = AuditWorker::new(client.clone(), state.audit_recorder.clone());
         tokio::spawn(async move {
             if let Err(e) = audit_worker.run().await {
                 error!("Audit Worker stopped with error: {}", e);
+            }
+        });
+    }
+
+    // Start Validator Key Rotation daemon if explicitly enabled.
+    if state.operator_config.key_rotation.enabled {
+        let daemon = Arc::new(super::security::rotation::KeyRotationDaemon::new(
+            client.clone(),
+            state.watch_namespace.clone(),
+            state.operator_config.key_rotation.clone(),
+            state.job_registry.clone(),
+        ));
+        tokio::spawn(async move {
+            if let Err(e) = daemon.run().await {
+                error!("Validator Key Rotation daemon stopped with error: {}", e);
             }
         });
     }

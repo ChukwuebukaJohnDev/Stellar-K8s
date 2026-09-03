@@ -10,56 +10,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//! Controller module for StellarNode reconciliation
-//!
-//! This module contains the main controller loop, reconciliation logic,
-//! and resource management for Stellar nodes.
-//!
-//! # Overview
-//!
-//! The controller implements the Kubernetes Operator pattern, continuously
-//! watching StellarNode resources and reconciling their desired state with
-//! the actual cluster state. It handles:
-//!
-//! - **Reconciliation**: Applying desired state changes to Deployments, StatefulSets, Services, etc.
-//! - **Health Monitoring**: Checking node health and sync status
-//! - **Lifecycle Management**: Finalizers for clean resource cleanup
-//! - **Leader Election**: Ensuring only one operator instance reconciles at a time
-//! - **Remediation**: Automatic recovery from common failure modes
-//! - **Archive Management**: History archive integrity and pruning
-//! - **Disaster Recovery**: Backup and restore automation
-//! - **Service Mesh Integration**: Istio and Linkerd support
-//! - **CVE Patching**: Automatic security updates
-//! - **Blue/Green Deployments**: Horizon/RPC Deployment color switching
-//! - **Core Blue/Green**: Validator StatefulSet sync-gated cutover (`blue_green_core`)
-//! - **Metrics**: Prometheus metrics for observability
-//!
-//! # Key Types
-//!
-//! - [`reconciler::ControllerState`] - Shared state for the reconciliation loop
-//! - [`reconciler::run_controller`] - Main entry point for the controller
-//! - [`health::HealthCheckResult`] - Node health status
-//! - [`archive_health::ArchiveHealthResult`] - Archive integrity status
-//! - [`remediation::RemediationLevel`] - Severity of remediation actions
-//! - [`blue_green::BlueGreenStatus`] - Blue/Green deployment status
-//!
-//! # Reconciliation Flow
-//!
-//! 1. Watch for StellarNode resource changes
-//! 2. Acquire leader lease (if leader election enabled)
-//! 3. Validate node specification
-//! 4. Create/update Kubernetes resources (Deployments, Services, PVCs, etc.)
-//! 5. Monitor health and sync status
-//! 6. Apply remediation if needed
-//! 7. Update node status with conditions
-//! 8. Requeue for periodic reconciliation
-//!
-//! # Finalizers
-//!
-//! The controller uses Kubernetes finalizers to ensure clean cleanup:
-//! - Removes PVCs if retention policy is `Delete`
-//! - Cleans up associated resources (Services, ConfigMaps, etc.)
-//! - Removes finalizer only after successful cleanup
+//! Controller module for StellarNode reconciliation.
 
 pub mod autoscaler;
 pub mod benchmark;
@@ -80,7 +31,10 @@ pub mod label_propagation;
 pub mod leader;
 pub mod maintenance;
 pub mod migration;
+pub mod ml_pipeline;
 pub mod network_isolation;
+pub mod observability_pipeline;
+pub mod phases;
 pub mod predictive_scaling;
 pub mod pss;
 pub mod quota;
@@ -98,8 +52,8 @@ pub mod audit_recorder;
 pub mod audit_sink;
 pub mod audit_worker;
 pub mod background_jobs;
-pub mod captive_core;
 pub mod captive;
+pub mod captive_core;
 pub mod chaos_engineering;
 pub mod compliance_export;
 pub mod conditions;
@@ -123,52 +77,49 @@ mod dr_test;
 pub(crate) mod finalizers;
 pub(crate) mod forensic_snapshot;
 pub(crate) mod health;
+pub mod health_check_sidecar;
 #[cfg(test)]
 mod health_test;
+pub mod ingestion;
 pub mod kms_secret;
 #[cfg(feature = "metrics")]
 pub mod metrics;
-pub mod security;
+pub mod mtls;
 pub mod mtls_rotation;
 pub mod oci_snapshot;
 pub mod operator_config;
 pub mod peer_discovery;
 #[cfg(test)]
 mod peer_discovery_test;
-pub mod performance;
-pub mod phases;
 pub mod pruning_reconciler;
 pub mod pruning_worker;
 pub mod quorum;
 pub mod read_pool;
-pub mod rollout;
 pub(crate) mod reconciler;
 #[cfg(test)]
 mod reconciler_test;
 pub(crate) mod remediation;
 #[cfg(test)]
 mod remediation_test;
+pub mod resource_optimization;
 pub(crate) mod resources;
 #[cfg(test)]
 mod resources_test;
-pub mod secret_policy_controller;
-pub(crate) mod secret_watcher;
+pub mod rollout;
+pub mod secret_watcher;
+pub mod security;
 pub mod service_mesh;
 mod snapshot;
 pub mod snapshot_worker;
-pub mod soroban_cache;
 pub mod spot_drain;
-pub mod state_sync;
 pub mod storage_migration;
 pub(crate) mod sync_scale;
 pub(crate) mod sync_state_monitor;
-pub mod tls;
-pub mod tenant_reconciler;
+
 pub mod topology;
 pub mod traffic;
 #[cfg(test)]
 mod traffic_test;
-pub mod volume_resizer;
 pub mod vpa;
 pub(crate) mod vsl;
 pub mod webhook_delivery;
@@ -248,7 +199,7 @@ pub use reconciler::reconcile_for_fuzz;
 pub use reconciler::{run_controller, BatchSummaryReport, ControllerState};
 pub use registry_controller::{check_admission, reconcile_stellar_registry, summary_to_cve_count};
 pub use remediation::{can_remediate, check_stale_node, RemediationLevel, StaleCheckResult};
-
+pub use security::rotation::{KeyRotationDaemon, ValidatorKeyRotationConfig};
 pub use service_mesh::{
     delete_service_mesh_resources, ensure_destination_rule, ensure_peer_authentication,
     ensure_request_authentication, ensure_virtual_service,
@@ -257,12 +208,3 @@ pub use snapshot_worker::run_snapshot_worker;
 pub use webhook_delivery::{
     DeliveryRecord, WebhookDeliveryService, WebhookEndpoint, WebhookEvent, WebhookEventType,
 };
-pub mod health_check_sidecar;
-pub mod ml_pipeline;
-pub mod observability_dashboard;
-pub mod observability_pipeline;
-pub mod orphan_audit;
-pub mod pvc_autoscaler;
-pub mod resource_optimization;
-
-pub use orphan_audit::{OrphanAuditReport, OrphanAuditor, OrphanedResource};

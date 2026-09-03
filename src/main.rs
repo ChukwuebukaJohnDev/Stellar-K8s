@@ -1,4 +1,3 @@
-
 use clap::Parser;
 use std::process;
 use stellar_k8s::cli::{Args, BackupCommands, Commands};
@@ -19,7 +18,8 @@ use stellar_k8s::controller::diff::diff;
 use stellar_k8s::version_check;
 use stellar_k8s::{incident, Error};
 
-
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     let offline = args.offline;
@@ -30,7 +30,7 @@ use stellar_k8s::{incident, Error};
             println!("Build Date: {}", env!("BUILD_DATE"));
             println!("Git SHA: {}", env!("GIT_SHA"));
             println!("Rust Version: {}", env!("RUST_VERSION"));
-            Ok()
+            Ok(())
         }
         Commands::Info(info_args) => run_info(info_args).await,
         Commands::CheckCrd => run_check_crd().await,
@@ -47,7 +47,7 @@ use stellar_k8s::{incident, Error};
             let mut cmd = Args::command();
             let name = "stellar-operator".to_string();
             generate(shell, &mut cmd, name, &mut std::io::stdout());
-            Ok()
+            Ok(())
         }
         Commands::InstallCompletion { shell } => {
             use clap::CommandFactory;
@@ -102,28 +102,26 @@ use stellar_k8s::{incident, Error};
         }
         Commands::Run(run_args) => {
             if let Err(e) = run_args.validate() {
-
+                eprintln!("error: {e}");
+                process::exit(2);
             }
 
             // Create a Kubernetes client for leader election.
             let k8s_client = match kube::Client::try_default().await {
                 Ok(client) => client,
                 Err(e) => {
-                    eprintln!("Failed to create Kubernetes client for leader election: {e}", e);
+                    eprintln!("Failed to create Kubernetes client for leader election: {e}");
                     process::exit(1);
                 }
             };
 
             // Start leader election to ensure only one operator instance is active.
             let leader = match stellar_k8s::controller::leader::LeaderElectionHandle::start(
-                k8s_client,
-                None,
-                None,
-                None,
+                k8s_client, None, None, None,
             ) {
                 Ok(handle) => handle,
                 Err(e) => {
-                    eprintln!("Failed to start leader election: {e}", e);
+                    eprintln!("Failed to start leader election: {e}");
                     process::exit(1);
                 }
             };
@@ -134,11 +132,11 @@ use stellar_k8s::{incident, Error};
             // Run the operator while we hold the lease. If the lease is lost (e.g.,
             // during network partition or pod failure), abort the operator so the pod
             // can restart and another replica can take over.
-            tokio ::select! {
+            tokio::select! {
                 result = run_operator(run_args) => result,
                 _ = leader.wait_until_lost() => {
                     eprintln!("Lost leader lease; shutting down operator");
-                    Ok()
+                    Ok(())
                 }
             }
         }
@@ -146,13 +144,13 @@ use stellar_k8s::{incident, Error};
         Commands::Doctor(doctor_args) => return run_doctor(doctor_args).await,
         Commands::HealthCheck(hc_args) => return run_health_check(hc_args),
         Commands::Benchmark(benchmark_args) => {
-            return run_benchmark_controller_cmd(benchmark_args).await
+            return run_benchmark_controller_cmd(benchmark_args).await;
         }
         Commands::Simulator(cli) => return run_simulator(cli).await,
         Commands::BenchmarkCompare(compare_args) => {
             return stellar_k8s::benchmark_compare::run_benchmark_compare(compare_args)
                 .await
-
+                .map_err(|e| Error::ConfigError(e.to_string()));
         }
         Commands::ExportCompliance(export_args) => {
             return run_export_compliance(export_args).await;

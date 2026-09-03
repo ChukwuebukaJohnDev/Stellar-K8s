@@ -23,7 +23,10 @@ mod tests {
     };
     use k8s_openapi::apimachinery::pkg::apis::meta::v1::LabelSelector;
 
-    use crate::controller::resources::build_topology_spread_constraints;
+    use crate::controller::resources::{
+        build_config_map_for_test, build_deployment_for_test, build_service_for_test,
+        build_topology_spread_constraints,
+    };
     use crate::crd::{
         types::{HorizonConfig, PodAntiAffinityStrength, ResourceRequirements, ResourceSpec},
         NodeType, StellarNetwork, StellarNodeSpec,
