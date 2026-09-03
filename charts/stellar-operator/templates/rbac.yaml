@@ -173,3 +173,38 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "stellar-operator.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
+---
+# Node-reader ClusterRole — grants the operator read-only access to Node
+# objects so the dynamic topology spread enforcer can inspect
+# topology.kubernetes.io/zone labels and decide whether strict
+# (hard) anti-affinity is achievable, falling back to soft/preferred
+# constraints on single-zone or single-node clusters.
+#
+# This is intentionally a separate, minimal ClusterRole so that teams running
+# the operator with namespace-scoped RBAC (watchNamespace set) can grant only
+# this narrow cluster-level permission without elevating the main Role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
+  labels:
+    {{- include "stellar-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "stellar-operator.fullname" . }}-node-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "stellar-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
