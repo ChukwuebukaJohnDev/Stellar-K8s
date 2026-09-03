@@ -34,7 +34,7 @@ impl MockContract {
         initial_value: u32,
     ) -> Result<(), ProxyError> {
         proxy_controller::init(&env, &admin, &security_council)?;
-        env.storage().instance().set(&DataKey::Value, &initial_value);
+
         Ok(())
     }
 
