@@ -28,6 +28,7 @@ function App() {
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
+  const [matrixCell, setMatrixCell] = useState(null);
   const [paused, setPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [view, setView] = useState('graph');
@@ -108,13 +109,6 @@ function App() {
           <p>{view === 'heatmap' ? 'Worker node CPU &amp; Memory heatmap.' : 'Multi-cluster quorum health.'}</p>
         </div>
 
-              </div>
-              <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
-              <div className="legend" aria-label="Node health legend">
-                <Legend color="green" label="Synced" />
-                <Legend color="amber" label="Degraded" />
-                <Legend color="red" label="Falling behind" />
-              </div>
             </div>
 
 
@@ -133,6 +127,11 @@ function Legend({ color, label }) {
 
 function EmptyInspector() {
   return <div className="empty-inspector"><div className="empty-icon">+</div><h2>Select a validator</h2><p>Validator metrics will appear here.</p></div>;
+}
+
+function MatrixInspector({ cell }) {
+  if (!cell) return <div className="matrix-inspector muted">Hover or click a matrix cell to inspect validator agreement and shared quorum dependencies.</div>;
+  return <div className="matrix-inspector"><strong>{cell.source.name} ↔ {cell.target.name}</strong><span>{(cell.agreement * 100).toFixed(1)}% effective agreement · {cell.overlapCount} shared dependencies</span>{cell.commonDependencies.length > 0 && <code>{cell.commonDependencies.join(', ')}</code>}</div>;
 }
 
 function NodeInspector({ node }) {
