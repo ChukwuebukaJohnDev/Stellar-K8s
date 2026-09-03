@@ -35,6 +35,56 @@ mod tests {
         handle
     }
 
+    fn make_controller_state(
+        client: Client,
+        enable_mtls: bool,
+        operator_namespace: &str,
+        dry_run: bool,
+    ) -> ControllerState {
+        let audit_log = Arc::new(AuditLog::new());
+
+        ControllerState {
+            client,
+            enable_mtls,
+            operator_namespace: operator_namespace.to_string(),
+            watch_namespace: None,
+            mtls_config: None,
+            dry_run,
+            retry_budget_retriable_secs: 15,
+            retry_budget_nonretriable_secs: 60,
+            retry_budget_max_attempts: 3,
+            is_leader: Arc::new(AtomicBool::new(true)),
+            event_reporter: kube::runtime::events::Reporter {
+                controller: "stellar-operator".to_string(),
+                instance: None,
+            },
+            operator_config: Arc::new(Default::default()),
+            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
+            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            log_reload_handle: make_reload_handle(),
+            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
+            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+            job_registry: Arc::new(JobRegistry::new()),
+            audit_log: audit_log.clone(),
+            audit_recorder: Arc::new(crate::controller::AuditRecorder::new(
+                audit_log,
+                Vec::new(),
+                None,
+            )),
+            anomaly_detector: Arc::new(crate::controller::anomaly_detection::AnomalyDetector::new(
+                Default::default(),
+            )),
+            plugin_registry: Arc::new(crate::plugin_sdk::PluginRegistry::new()),
+            analytics_engine: Arc::new(crate::logging::analytics::AnalyticsEngine::new(
+                Duration::from_secs(3600),
+            )),
+            #[cfg(feature = "rest-api")]
+            oidc_config: None,
+            #[cfg(feature = "rest-api")]
+            metrics_store: Arc::new(crate::rest_api::metrics_store::StellarMetricsStore::new()),
+        }
+    }
+
     /// Helper to create a minimal test StellarNode for Validator
     fn create_test_validator_node(name: &str, namespace: &str) -> StellarNode {
         StellarNode {
@@ -89,7 +139,6 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
                     external_dns: None,
                     known_peers: None,
                     quorum_optimization: None,
-                    ..Default::default()
                 }),
                 horizon_config: None,
                 soroban_config: None,
@@ -352,31 +401,12 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         let client = Client::try_default()
             .await
             .unwrap_or_else(|_| panic!("Cannot create test client"));
-        let state = Arc::new(ControllerState {
-            client: client.clone(),
-            enable_mtls: false,
-            operator_namespace: "stellar-operator".to_string(),
-            watch_namespace: None,
-            mtls_config: None,
-            dry_run: true,
-            retry_budget_retriable_secs: 15,
-            retry_budget_nonretriable_secs: 60,
-            retry_budget_max_attempts: 3,
-            is_leader: Arc::new(AtomicBool::new(true)),
-            event_reporter: kube::runtime::events::Reporter {
-                controller: "stellar-operator".to_string(),
-                instance: None,
-            },
-            operator_config: Arc::new(Default::default()),
-            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
-            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            log_reload_handle: make_reload_handle(),
-            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
-            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            job_registry: Arc::new(JobRegistry::new()),
-            audit_log: Arc::new(AuditLog::new()),
-            oidc_config: None,
-        });
+        let state = Arc::new(make_controller_state(
+            client.clone(),
+            false,
+            "stellar-operator",
+            true,
+        ));
 
         // Test with a retriable error (network-related)
         let error = Error::ConfigError("Temporary network issue".to_string());
@@ -397,31 +427,12 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         let client = Client::try_default()
             .await
             .unwrap_or_else(|_| panic!("Cannot create test client"));
-        let state = Arc::new(ControllerState {
-            client: client.clone(),
-            enable_mtls: false,
-            operator_namespace: "stellar-operator".to_string(),
-            watch_namespace: None,
-            mtls_config: None,
-            dry_run: true,
-            retry_budget_retriable_secs: 15,
-            retry_budget_nonretriable_secs: 60,
-            retry_budget_max_attempts: 3,
-            is_leader: Arc::new(AtomicBool::new(true)),
-            event_reporter: kube::runtime::events::Reporter {
-                controller: "stellar-operator".to_string(),
-                instance: None,
-            },
-            operator_config: Arc::new(Default::default()),
-            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
-            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            log_reload_handle: make_reload_handle(),
-            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
-            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            job_registry: Arc::new(JobRegistry::new()),
-            audit_log: Arc::new(AuditLog::new()),
-            oidc_config: None,
-        });
+        let state = Arc::new(make_controller_state(
+            client.clone(),
+            false,
+            "stellar-operator",
+            true,
+        ));
 
         // Test with validation error (non-retriable)
         let error = Error::ValidationError("Invalid configuration".to_string());
@@ -441,31 +452,12 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         let client = Client::try_default()
             .await
             .unwrap_or_else(|_| panic!("Cannot create test client"));
-        let state = Arc::new(ControllerState {
-            client: client.clone(),
-            enable_mtls: false,
-            operator_namespace: "stellar-operator".to_string(),
-            watch_namespace: None,
-            mtls_config: None,
-            dry_run: true,
-            retry_budget_retriable_secs: 15,
-            retry_budget_nonretriable_secs: 60,
-            retry_budget_max_attempts: 3,
-            is_leader: Arc::new(AtomicBool::new(true)),
-            event_reporter: kube::runtime::events::Reporter {
-                controller: "stellar-operator".to_string(),
-                instance: None,
-            },
-            operator_config: Arc::new(Default::default()),
-            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
-            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
-            log_reload_handle: make_reload_handle(),
-            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            job_registry: Arc::new(JobRegistry::new()),
-            audit_log: Arc::new(AuditLog::new()),
-            oidc_config: None,
-        });
+        let state = Arc::new(make_controller_state(
+            client.clone(),
+            false,
+            "stellar-operator",
+            true,
+        ));
 
         let errors = vec![
             Error::ConfigError("test".to_string()),
@@ -710,31 +702,7 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
         let client = Client::try_default()
             .await
             .unwrap_or_else(|_| panic!("Cannot create test client"));
-        let state = ControllerState {
-            client: client.clone(),
-            enable_mtls: true,
-            operator_namespace: "test-namespace".to_string(),
-            watch_namespace: None,
-            mtls_config: None,
-            dry_run: false,
-            retry_budget_retriable_secs: 15,
-            retry_budget_nonretriable_secs: 60,
-            retry_budget_max_attempts: 3,
-            is_leader: Arc::new(AtomicBool::new(true)),
-            event_reporter: kube::runtime::events::Reporter {
-                controller: "stellar-operator".to_string(),
-                instance: None,
-            },
-            operator_config: Arc::new(Default::default()),
-            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
-            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            log_reload_handle: make_reload_handle(),
-            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
-            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            job_registry: Arc::new(JobRegistry::new()),
-            audit_log: Arc::new(AuditLog::new()),
-            oidc_config: None,
-        };
+        let state = make_controller_state(client.clone(), true, "test-namespace", false);
 
         assert_eq!(state.operator_namespace, "test-namespace");
         assert!(state.enable_mtls);
@@ -750,31 +718,7 @@ VALIDATORS=["VALIDATOR1", "VALIDATOR2"]"#
             .await
             .unwrap_or_else(|_| panic!("Cannot create test client"));
 
-        let state = ControllerState {
-            client,
-            enable_mtls: false,
-            operator_namespace: "default".to_string(),
-            watch_namespace: None,
-            mtls_config: None,
-            dry_run: true,
-            retry_budget_retriable_secs: 15,
-            retry_budget_nonretriable_secs: 60,
-            retry_budget_max_attempts: 3,
-            is_leader: Arc::new(AtomicBool::new(true)),
-            event_reporter: kube::runtime::events::Reporter {
-                controller: "stellar-operator".to_string(),
-                instance: None,
-            },
-            operator_config: Arc::new(Default::default()),
-            reconcile_id_counter: std::sync::atomic::AtomicU64::new(0),
-            last_reconcile_success: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            log_reload_handle: make_reload_handle(),
-            log_level_expires_at: Arc::new(tokio::sync::Mutex::new(None)),
-            last_event_received: Arc::new(std::sync::atomic::AtomicU64::new(0)),
-            job_registry: Arc::new(JobRegistry::new()),
-            audit_log: Arc::new(AuditLog::new()),
-            oidc_config: None,
-        };
+        let state = make_controller_state(client, false, "default", true);
 
         assert!(
             state.dry_run,
