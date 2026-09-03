@@ -36,8 +36,7 @@ mod cache;
 
 use std::panic::{self, AssertUnwindSafe};
 
-use cache::{CacheConfig, LruTtlCache, Lookup};
-use serde::{Deserialize, Serialize};
+:{Deserialize, Serialize};
 
 // Host functions provided by the runtime (same ABI as example-validator).
 // Only declared/linked for the actual Wasm target: the host only ever
@@ -88,8 +87,7 @@ impl Default for RequestConfig {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "op", rename_all = "lowercase")]
 enum CacheOp {
-    Get { key: String, now: u64 },
-    Put { key: String, value: String, now: u64 },
+
     /// Test-only op: deliberately panics inside the cache call path, to
     /// prove the fail-open wrapper survives a real panic rather than only
     /// a modeled error path.
@@ -99,12 +97,12 @@ enum CacheOp {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "lowercase")]
 enum OpOutcome {
-    Hit { value: String },
+
     Miss,
     Ok,
     /// The cache path failed (panicked, or was disabled) and the caller
     /// should treat this as a cache miss and go straight to the RPC node.
-    Bypass { reason: String },
+
 }
 
 #[derive(Debug, Serialize)]
@@ -140,12 +138,12 @@ fn read_request() -> Result<CacheRequest, String> {
     if read < 0 {
         return Err("Failed to read input".to_string());
     }
-    serde_json::from_slice(&buffer[..read as usize]).map_err(|e| format!("Failed to parse input: {e}"))
+
 }
 
 #[cfg(target_arch = "wasm32")]
 fn write_response(response: &CacheResponse) -> Result<(), String> {
-    let json = serde_json::to_vec(response).map_err(|e| format!("Failed to serialize output: {e}"))?;
+
     let result = unsafe { write_output(json.as_ptr(), json.len() as i32) };
     if result < 0 {
         return Err("Failed to write output".to_string());
@@ -221,7 +219,7 @@ fn handle_request(request: CacheRequest) -> CacheResponse {
         })
         .collect();
 
-    CacheResponse { results, any_bypassed }
+
 }
 
 /// Entry point called by the Wasm runtime.
