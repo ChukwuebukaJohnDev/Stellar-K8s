@@ -65,7 +65,6 @@ fn default_storage() -> StorageConfig {
         annotations: None,
         node_affinity: None,
         snapshot_ref: None,
-        ..Default::default()
     }
 }
 
@@ -92,7 +91,6 @@ fn base_validator_spec() -> StellarNodeSpec {
             external_dns: None,
             known_peers: None,
             quorum_optimization: None,
-            ..Default::default()
         }),
         horizon_config: None,
         soroban_config: None,
@@ -221,6 +219,7 @@ fn base_soroban_spec() -> StellarNodeSpec {
             captive_core_structured_config: None,
             enable_preflight: true,
             max_events_per_request: 10000,
+            cache: None,
         }),
         replicas: 2,
         min_available: None,

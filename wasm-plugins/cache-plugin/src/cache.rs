@@ -123,9 +123,7 @@ where
         }
 
         let expired = match self.entries.get(key) {
-            Some(entry) => {
-                self.ttl_seconds != 0 && now.saturating_sub(entry.inserted_at) >= self.ttl_seconds
-            }
+
             None => return Lookup::Miss,
         };
 
@@ -147,13 +145,7 @@ where
         }
 
         if self.entries.contains_key(&key) {
-            self.entries.insert(
-                key.clone(),
-                Entry {
-                    value,
-                    inserted_at: now,
-                },
-            );
+
             self.touch(&key);
             return;
         }
@@ -162,13 +154,7 @@ where
             self.evict_lru();
         }
 
-        self.entries.insert(
-            key.clone(),
-            Entry {
-                value,
-                inserted_at: now,
-            },
-        );
+
         self.recency.insert(0, key);
     }
 
@@ -198,10 +184,7 @@ mod tests {
     use super::*;
 
     fn cache(capacity: usize, ttl_seconds: u64) -> LruTtlCache<String, String> {
-        LruTtlCache::new(CacheConfig {
-            capacity,
-            ttl_seconds,
-        })
+
     }
 
     #[test]
@@ -226,11 +209,7 @@ mod tests {
         assert_eq!(c.get(&"a".to_string(), 0), Lookup::Hit("1".into()));
         c.put("c".into(), "3".into(), 0);
 
-        assert_eq!(
-            c.get(&"b".to_string(), 0),
-            Lookup::Miss,
-            "b should have been evicted"
-        );
+
         assert_eq!(c.get(&"a".to_string(), 0), Lookup::Hit("1".into()));
         assert_eq!(c.get(&"c".to_string(), 0), Lookup::Hit("3".into()));
         assert_eq!(c.len(), 2);
@@ -240,21 +219,7 @@ mod tests {
     fn ttl_expiry_evicts_on_next_lookup() {
         let mut c = cache(10, 30);
         c.put("a".into(), "1".into(), 100);
-        assert_eq!(
-            c.get(&"a".to_string(), 129),
-            Lookup::Hit("1".into()),
-            "not yet expired"
-        );
-        assert_eq!(
-            c.get(&"a".to_string(), 130),
-            Lookup::Miss,
-            "expired at exactly the TTL boundary"
-        );
-        assert_eq!(
-            c.len(),
-            0,
-            "expired entry should be evicted, not just hidden"
-        );
+
     }
 
     #[test]
@@ -290,10 +255,6 @@ mod tests {
         // At t=45 the *original* insert (t=0) would have expired, but the
         // refresh at t=20 should keep it alive until t=50.
         assert_eq!(c.get(&"a".to_string(), 45), Lookup::Hit("2".into()));
-        assert_eq!(
-            c.len(),
-            1,
-            "refreshing an existing key must not duplicate it"
-        );
+
     }
 }

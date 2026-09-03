@@ -581,6 +581,65 @@ Fields marked *(required)* must be present in every `StellarNode` manifest.
 | **Description** | Maintenance window start time (24h format, e.g., "02:00") Maintenance will only trigger during this window |
 | **Required** | *(required)* |
 
+### `spec.diagnosticSidecarResources`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources` |
+| **Type** | `object` |
+| **Description** | Resource requests and limits for the operator-managed diagnostic health-check sidecar. Defaults to 50m CPU and 64Mi memory for both requests and limits when unset. |
+| **Nullable** | `true` |
+
+#### `spec.diagnosticSidecarResources.limits`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.limits` |
+| **Type** | `object` |
+| **Description** | Resource specification for CPU and memory |
+| **Required** | *(required)* |
+
+##### `spec.diagnosticSidecarResources.limits.cpu`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.limits.cpu` |
+| **Type** | `string` |
+| **Required** | *(required)* |
+
+##### `spec.diagnosticSidecarResources.limits.memory`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.limits.memory` |
+| **Type** | `string` |
+| **Required** | *(required)* |
+
+#### `spec.diagnosticSidecarResources.requests`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.requests` |
+| **Type** | `object` |
+| **Description** | Resource specification for CPU and memory |
+| **Required** | *(required)* |
+
+##### `spec.diagnosticSidecarResources.requests.cpu`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.requests.cpu` |
+| **Type** | `string` |
+| **Required** | *(required)* |
+
+##### `spec.diagnosticSidecarResources.requests.memory`
+
+| | |
+|---|---|
+| **Path** | `spec.diagnosticSidecarResources.requests.memory` |
+| **Type** | `string` |
+| **Required** | *(required)* |
+
 ### `spec.drConfig`
 
 | | |
@@ -1041,6 +1100,18 @@ Fields marked *(required)* must be present in every `StellarNode` manifest.
 | **Type** | `string` |
 | **Nullable** | `true` |
 
+### `spec.initContainers`
+
+| | |
+|---|---|
+| **Path** | `spec.initContainers` |
+| **Type** | `array` of `object` |
+| **Description** | Optional init containers to run before the main Stellar container starts.
+These run to completion in order before the main container starts.
+Useful for tasks like fetching custom configuration, restoring state,
+or pre-populating volumes. |
+| **Nullable** | `true` |
+
 ### `spec.loadBalancer`
 
 | | |
@@ -1480,7 +1551,7 @@ Fields marked *(required)* must be present in every `StellarNode` manifest.
 |---|---|
 | **Path** | `spec.networkPolicy.enabled` |
 | **Type** | `boolean` |
-| **Default** | `False` |
+| **Default** | `True` |
 
 #### `spec.networkPolicy.metricsNamespace`
 
@@ -1998,6 +2069,55 @@ Fields marked *(required)* must be present in every `StellarNode` manifest.
 | **Type** | `object` |
 | **Description** | Soroban RPC server configuration |
 | **Nullable** | `true` |
+
+#### `spec.sorobanConfig.cache`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache` |
+| **Type** | `object` |
+| **Description** | Bounded fail-open cache for read-only Soroban RPC state requests |
+| **Nullable** | `true` |
+
+##### `spec.sorobanConfig.cache.enabled`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache.enabled` |
+| **Type** | `boolean` |
+| **Default** | `False` |
+
+##### `spec.sorobanConfig.cache.image`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache.image` |
+| **Type** | `string` |
+| **Nullable** | `true` |
+
+##### `spec.sorobanConfig.cache.maxBytes`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache.maxBytes` |
+| **Type** | `integer` (int64) |
+| **Default** | `67108864` |
+
+##### `spec.sorobanConfig.cache.maxEntries`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache.maxEntries` |
+| **Type** | `integer` (int64) |
+| **Default** | `10000` |
+
+##### `spec.sorobanConfig.cache.ttlSecs`
+
+| | |
+|---|---|
+| **Path** | `spec.sorobanConfig.cache.ttlSecs` |
+| **Type** | `integer` (int64) |
+| **Default** | `30` |
 
 #### `spec.sorobanConfig.captiveCoreConfig`
 
