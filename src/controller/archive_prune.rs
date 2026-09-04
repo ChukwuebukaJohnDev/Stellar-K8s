@@ -31,8 +31,8 @@ use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, error, info, warn};
 
+use crate::controller::leader::LeaseGuard;
 use crate::Error;
-use crate::leader::LeaseGuard;
 
 /// Minimum number of checkpoints to always retain (safety buffer)
 const MIN_CHECKPOINTS_TO_RETAIN: u32 = 10;
@@ -519,6 +519,7 @@ pub async fn execute_prune(
     let errors: Arc<tokio::sync::Mutex<Vec<String>>> =
         Arc::new(tokio::sync::Mutex::new(Vec::new()));
 
+    let delete_stream = stream::iter(deletable.into_iter())
     let _deletable_count = deletable.len();
     let delete_stream = stream::iter(deletable)
         .map(|checkpoint| {
@@ -694,7 +695,8 @@ pub async fn prune_archive(args: PruneArchiveArgs) -> Result<(), Error> {
     .map_err(|e| Error::ConfigError(format!("failed to acquire leader lease: {e}")))?;
 
     // Execute pruning
-    let mut result = execute_prune(&_lease, deletable, &location, args.force, args.concurrency).await?;
+    let mut result =
+        execute_prune(&_lease, deletable, &location, args.force, args.concurrency).await?;
     result.total_checkpoints = checkpoints.len();
     result.retained_count = retained.len();
     result.retained_ledgers = retained.iter().map(|c| c.ledger_seq).collect();

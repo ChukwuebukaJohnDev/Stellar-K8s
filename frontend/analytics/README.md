@@ -94,19 +94,10 @@ npm run build
 npm run matrix:perf
 ```
 
-`npm test` runs the `graphModel`, `heatmapModel`, and `ResourceHeatmap` suites via
-`node --test` (a small esbuild loader hook, `test/register-jsx.mjs`, transpiles the
-`.jsx` component for server-side render assertions). The model tests exercise both
-snapshot and message ingestion plus Prometheus parsing, saturation classification,
-zone grouping, and node-eviction. The browser performance target is validated with
-the mock harness and browser devtools or a production preview build; the renderers
-avoid per-edge/per-node React elements and limit device pixel ratio to reduce GPU
-pressure.
-The model tests exercise both snapshot and message ingestion. The performance harnesses validate the issue's 10,000-cell requirement and produce the profiling evidence in [PROFILING.md](./PROFILING.md):
+
 
 ```bash
-npm run build && npm run matrix:browser:perf            # fps, long tasks, heap in headless Chromium
-npm run build && npm run matrix:browser:perf -- --video # + interactive navigation screencast
+node scripts/mock-fee-stream.mjs --serve --history-hours 48 --spike-hours 9,21 --interval 1000
 ```
 
-`matrix:perf` fails if the mock topology yields fewer than 10,000 interconnect cells. The browser harness records the actual WebGL renderer string; numbers captured on GPU-less machines (SwiftShader rasterization) are environment-bound and are labeled as such. The renderer avoids per-edge/per-node React elements and limits device pixel ratio to reduce GPU pressure.
+Without `--serve` the generator emits newline-delimited JSON to stdout for replay. Live mode reads fee-enriched frames from `/api/v1/quorum/topology/stream`; when a frame carries no fee field, the feed infers a base fee from `tps`. The estimator model (`src/fees/feeModel.js`) and its tests (`npm test`) validate that historical fee spike data moves the congestion level and recommended tiers.

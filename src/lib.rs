@@ -100,12 +100,7 @@ pub mod byzantine;
 pub mod canary_deployment;
 pub mod capacity_planning;
 pub mod carbon_aware;
-pub mod cli;
-pub mod commands;
-pub mod compliance;
-pub mod compliance_scan;
-pub mod config_mgmt;
-pub mod consensus_monitoring;
+
 pub mod controller;
 pub mod cost_optimization;
 pub mod crd;
@@ -114,10 +109,7 @@ pub mod db_management;
 pub mod db_migrations;
 pub mod deployment_strategy;
 pub mod error;
-pub mod error_budget;
-pub mod event_processing;
-pub mod feature_flags;
-pub mod federation;
+
 pub mod fork_detector;
 pub mod incident;
 pub mod infra;
@@ -130,6 +122,7 @@ pub mod message_queue;
 pub mod network_observability;
 pub mod plugin_sdk;
 pub mod preflight;
+#[path = "profiling/mod.rs"]
 pub mod profiling;
 pub mod runbook;
 pub mod scheduler;
@@ -137,6 +130,7 @@ pub mod schema_registry;
 pub mod sdk;
 pub mod search;
 pub mod security;
+#[path = "telemetry.rs"]
 pub mod telemetry;
 pub mod version_check;
 pub mod websocket_streaming;

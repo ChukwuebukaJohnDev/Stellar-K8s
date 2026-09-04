@@ -1,10 +1,9 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import TopologyScene from './TopologyScene.jsx';
-import ResourceHeatmap from './heatmap/ResourceHeatmap.jsx';
-import QuorumMatrixCanvas from '../../components/webgl/QuorumMatrixCanvas.jsx';
+
 import { createStreamState, ingest, materialize, statusForNode } from './graphModel.js';
-import { buildQuorumMatrix, emptyMatrix, matrixStats } from '../matrix/quorumMatrixModel.js';
+
 import './styles.css';
 
 const EMPTY_GRAPH = materialize(createStreamState());
@@ -15,6 +14,9 @@ const initialSource = sourceFromQuery === 'mock' || sourceFromQuery === 'kafka' 
 const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
 const prometheusEndpoint = query.get('prom') || '/api/v1/query';
 
+// Tab driven by ?view= query param so links are shareable.
+const initialView = query.get('view') === 'heatmap' ? 'heatmap' : 'topology';
+
 function streamUrl(source) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   if (source === 'mock' || source === 'kafka') return `${protocol}://${bridgeUrl}`;
@@ -22,11 +24,13 @@ function streamUrl(source) {
 }
 
 function App() {
+
   const [source, setSource] = useState(initialSource);
-  const [view, setView] = useState(initialView);
+
   const [graph, setGraph] = useState(EMPTY_GRAPH);
   const [connection, setConnection] = useState('connecting');
   const [selected, setSelected] = useState(null);
+  const [matrixCell, setMatrixCell] = useState(null);
   const [paused, setPaused] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [view, setView] = useState('graph');
@@ -36,6 +40,7 @@ function App() {
   const renderFrameRef = useRef(null);
 
   useEffect(() => {
+    if (view !== 'topology') return; // don't open WS if not on topology view
     streamStateRef.current = createStreamState();
     setGraph(EMPTY_GRAPH);
     setMatrix(emptyMatrix());
@@ -81,7 +86,7 @@ function App() {
         renderFrameRef.current = null;
       }
     };
-  }, [source]);
+  }, [source, view]);
 
   const counts = useMemo(() => {
     const values = graph.nodes.map(statusForNode);
@@ -102,132 +107,10 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <span className="eyebrow">STELLAR / OBSERVABILITY</span>
-          <h1>Network topology</h1>
-          <p>Multi-cluster quorum health.</p>
-        </div>
-        <div className="toolbar" role="toolbar" aria-label="Visualization controls">
-          <div className="segmented" role="group" aria-label="Visualization">
-            <button type="button" className={view === 'topology' ? 'active' : ''} onClick={() => setView('topology')}>
-              Topology
-            </button>
-            <button type="button" className={view === 'heatmap' ? 'active' : ''} onClick={() => setView('heatmap')}>
-              Saturation
-            </button>
-          </div>
-          {view === 'topology' ? (
-            <>
-              <label className="select-wrap">
-                <span>Data source</span>
-                <select value={source} onChange={(event) => setSource(event.target.value)}>
-                  <option value="live">Live operator stream</option>
-                  <option value="kafka">Kafka WebSocket bridge</option>
-                  <option value="mock">Mock Kafka stream</option>
-                </select>
-              </label>
-              <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-                {paused ? 'Resume motion' : 'Pause motion'}
-              </button>
-            </>
-          ) : null}
-        <div className="toolbar" role="toolbar" aria-label="Topology controls">
-          <label className="select-wrap">
-            <span>Data source</span>
-            <select value={source} onChange={(event) => setSource(event.target.value)}>
-              <option value="live">Live operator stream</option>
-              <option value="kafka">Kafka WebSocket bridge</option>
-              <option value="mock">Mock Kafka stream</option>
-            </select>
-          </label>
-          <div className="view-toggle" role="tablist" aria-label="View mode">
-            <button type="button" role="tab" aria-selected={view === 'graph'} className={view === 'graph' ? 'active' : ''} onClick={() => setView('graph')}>3D graph</button>
-            <button type="button" role="tab" aria-selected={view === 'matrix'} className={view === 'matrix' ? 'active' : ''} onClick={() => setView('matrix')}>Quorum matrix</button>
-          </div>
-          <button className="tool-button" type="button" onClick={() => setPaused((value) => !value)}>
-            {paused ? 'Resume motion' : 'Pause motion'}
-          </button>
-        </div>
-      </header>
 
-      {view === 'topology' ? (
-        <>
-          <section className="metric-strip" aria-label="Network summary">
-            <Metric label="Validators" value={graph.nodes.length.toLocaleString()} detail={`${graph.edges.length.toLocaleString()} quorum links`} />
-            <Metric label="Synced" value={counts.synced.toLocaleString()} detail="Externalize phase" tone="green" />
-            <Metric label="Degraded" value={counts.degraded.toLocaleString()} detail="Prepare or confirm" tone="amber" />
-            <Metric label="Falling behind" value={counts.falling.toLocaleString()} detail="Stalled or unknown" tone="red" />
-          </section>
 
-          <section className="workspace">
-            <div className="graph-panel">
-              <div className="panel-heading">
-                <div>
-                  <span className={`status-dot ${connection}`} />
-                  <strong>{sourceLabel}</strong>
-                  <span className="muted">{lastUpdate ? `updated ${lastUpdate.toLocaleTimeString()}` : 'waiting for telemetry'}</span>
-                </div>
-                <span className="muted">Live graph</span>
-              </div>
-              <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />
-              <div className="legend" aria-label="Node health legend">
-                <Legend color="green" label="Synced" />
-                <Legend color="amber" label="Degraded" />
-                <Legend color="red" label="Falling behind" />
-              </div>
-            </div>
 
-            <aside className="inspector" aria-live="polite">
-              <span className="eyebrow">NODE INSPECTOR</span>
-              {selected ? <NodeInspector node={selected} /> : <EmptyInspector />}
-            </aside>
-          </section>
-        </>
-      ) : (
-        <section className="workspace heatmap-workspace">
-          <div className="graph-panel">
-            <div className="panel-heading">
-              <div>
-                <strong>Worker-node resource saturation</strong>
-                <span className="muted">polling {prometheusEndpoint} every 5s</span>
-              </div>
-              <span className="muted">CPU / memory heatmap</span>
-            </div>
-            <div className="heatmap-host">
-              <ResourceHeatmap endpoint={prometheusEndpoint} pollIntervalMs={5000} />
-            </div>
-          </div>
-        </section>
-      )}
-            <span className="muted">Live graph</span>
-          </div>
-          {view === 'matrix'
-            ? <QuorumMatrixCanvas matrix={matrix} onHoverCell={setHoverCell} />
-            : <TopologyScene graph={graph} onSelect={selectNode} selectedId={selected?.id} paused={paused} />}
-          {view === 'matrix'
-            ? (
-              <div className="legend" aria-label="Matrix legend">
-                <Legend color="green" label="Agreeing" />
-                <Legend color="amber" label="Confirming" />
-                <Legend color="blue" label="Lagging" />
-                <Legend color="red" label="Diverged" />
-                <span className="muted">{hoverCell ? `row ${hoverCell.sourceIndex} → col ${hoverCell.targetIndex}` : `${matrixSummary?.cells.toLocaleString() ?? 0} interconnect cells`}</span>
-              </div>
-            )
-            : (
-              <div className="legend" aria-label="Node health legend">
-                <Legend color="green" label="Synced" />
-                <Legend color="amber" label="Degraded" />
-                <Legend color="red" label="Falling behind" />
-              </div>
-            )}
-        </div>
 
-        <aside className="inspector" aria-live="polite">
-          <span className="eyebrow">{view === 'matrix' ? 'CELL INSPECTOR' : 'NODE INSPECTOR'}</span>
-          {view === 'matrix'
-            ? <CellInspector cell={hoverCell} matrix={matrix} summary={matrixSummary} />
-            : (selected ? <NodeInspector node={selected} /> : <EmptyInspector />)}
-        </aside>
-      </section>
     </main>
   );
 }
@@ -242,6 +125,11 @@ function Legend({ color, label }) {
 
 function EmptyInspector() {
   return <div className="empty-inspector"><div className="empty-icon">+</div><h2>Select a validator</h2><p>Validator metrics will appear here.</p></div>;
+}
+
+function MatrixInspector({ cell }) {
+  if (!cell) return <div className="matrix-inspector muted">Hover or click a matrix cell to inspect validator agreement and shared quorum dependencies.</div>;
+  return <div className="matrix-inspector"><strong>{cell.source.name} ↔ {cell.target.name}</strong><span>{(cell.agreement * 100).toFixed(1)}% effective agreement · {cell.overlapCount} shared dependencies</span>{cell.commonDependencies.length > 0 && <code>{cell.commonDependencies.join(', ')}</code>}</div>;
 }
 
 function NodeInspector({ node }) {

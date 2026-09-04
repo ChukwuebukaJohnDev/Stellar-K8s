@@ -1,3 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "fee_bumper",
+    "fee_bumper_tests",
+]
+
+# This is a standalone Soroban workspace, intentionally kept out of the
+# top-level Stellar-K8s Cargo workspace (which builds the Kubernetes
+# operator binaries, not on-chain contracts) — same pattern as
+# contracts/proxy-controller.
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
 [package]
 name = "fee-bumper"
 version = "0.1.0"
