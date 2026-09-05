@@ -45,9 +45,9 @@ clap_complete = "4.5"
 chrono = { version = "0.4", features = ["serde"] }
 # Pinned to fix RUSSEC-2026-0009 (stack exhustion DoS); also used transitively
 # by rcgen/yasna/x509-parser.
-time = { version = "0.3.47", optional = true }
+time = { version = "0.3.47" }
 # Pinned to fix RUSTSEC-2026-0007; used transitively by many HTTP/async crates.
-bytes = { version = "1.11.1", optional = true }
+bytes = { version = "1.11.1" }
 
 # Zip compression for incident reports
 zip = "2"
@@ -62,7 +62,7 @@ regex = "1"
 # Logging and tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
-tracing-opentemetry = "0.22"
+tracing-opentelemetry = "0.22"
 
 # OpenTelemetry for distributed tracing
 opentelemetry = "0.21"
