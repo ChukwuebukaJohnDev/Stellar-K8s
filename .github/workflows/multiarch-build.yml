@@ -17,13 +17,13 @@ name: Multi-Arch Build & Verify
   workflow_dispatch:
 
 env:
-  REGISTRY: ghrc
-  IMGE_NAME: $${{ github.repository }}
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ─
   build-multiarch:
-    name: Build ($$ {{ matrix.platform }})
+    name: Build (${{ matrix.platform }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -45,9 +45,9 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
-          registry: $${{ env.REGISTRY }}
-          username: $$ {{ github.actor }}
-          password: $$ {{ secrets.GITHUR_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add eBPF build dependencies to Dockerfile
         run: |
@@ -57,39 +57,39 @@ jobs:
             sed -i '/^FROM .* AS builder/a RUN apt-get update && apt-get install -y --no-install-recommends clang libbpf-dev libelf-dev && rm -rf /var/lib/apt/lists/*' Dockerfile || true
           fi
 
-      - name: Build image for $$ {{ matrix.platform }}
+      - name: Build image for ${{ matrix.platform }}
         uses: docker/build-push-action@v7
         with:
           context: .
-          platforms: $$ {{ matrix.platform }}
+          platforms: ${{ matrix.platform }}
           push: false
           load: true
-          tags: stellar-k8s-test:$$ {{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
-          cache-from: type=gha,scope=$$ {{ matrix.platform }}
-          cache-to: type=gha,mode=max,scope=$$ {{ matrix.platform }}
+          tags: stellar-k8s-test:${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
           build-args: |
             BUILDPLATFORM=linux/amd64
-            TARGETPLATFORM=$$ {{ matrix.platform }}
+            TARGETPLATFORM=${{ matrix.platform }}
 
       - name: Verify binary architecture
         run: |
-          ARCH=$$ {{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
-          docker run --rm --platform $$ {{ matrix.platform }} \\
-            stellar-k8s-test:${ARCH} \\
+          ARCH=${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          docker run --rm --platform ${{ matrix.platform }} \
+            stellar-k8s-test:${ARCH} \
             /stellar-operator version
-          echo "v∓ stellar-operator boots on $$ {{ matrix.platform }}"
+          echo "v∓ stellar-operator boots on ${{ matrix.platform }}"
 
-          docker run --rm --platform $$ {{ matrix.platform }} \\
-            stellar-k8s-test:${ARCH} \\
+          docker run --rm --platform ${{ matrix.platform }} \
+            stellar-k8s-test:${ARCH} \
             /stellar-fork-detector --help
-          echo "✓ stellar-fork-detector boots on $$ {{ matrix.platform }}"
+          echo "✓ stellar-fork-detector boots on ${{ matrix.platform }}"
 
-          docker run --rm --platform $$ {{ matrix.platform }} \\
-            stellar-k8s-test:${ARCH} \\
+          docker run --rm --platform ${{ matrix.platform }} \
+            stellar-k8s-test:${ARCH} \
             /stellar-watcher --help
-          echo "✓ stellar-watcher boots on $$ {{ matrix.platform }}"
+          echo "✓ stellar-watcher boots on ${{ matrix.platform }}"
 
-  # ─publish-manifest:
+  publish-manifest:
     name: Publish Multi-Arch Manifest
     runs-on: ubuntu-latest
     needs: build-multiarch
@@ -108,15 +108,15 @@ jobs:
       - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
-          registry: $${{ env.REGISTRY }}
-          username: $$ {{ github.actor }}
-          password: $$ {{ secrets.GITHUR_TOKEN }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: $${{ env.REGISTRY }}/$$ {{ env.IMGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=sha-
             type=raw,value=edge
@@ -127,19 +127,19 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: $$ {{ steps.meta.outputs.tags }}
-          labels: $$ {{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Inspect manifest
         run: |
-          docker buildx imagetools inspect \\
-            $$ {{ env.REGISTRY }}/$$ {{ env.IMGE_NAME }}:edge
+          docker buildx imagetools inspect \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:edge
 
-  n ¡° arch-benchmark:
-    name: Arch Benchmark ($$ {{ matrix.arch }})
-    runs-on: $$ {{ matrix.runner }}
+  arch-benchmark:
+    name: Arch Benchmark (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
@@ -160,20 +160,20 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: $$ {{ runner.os }}-$$ {{ matrix.arch }}-bench-$$ {hashFiles('**/Cargo.lock')}
+          key: ${{ runner.os }}-${{ matrix.arch }}-bench-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run reconciler benchmark
         run: |
-          cargo test --release -- --nocapture 2>&1 | tee bench-$$ {{ matrix.arch }}.txt
-          echo "ARCH$=$$ {{ matrix.arch }}" >> $GNTHUB_ENV
+          cargo test --release -- --nocapture 2>&1 | tee bench-${{ matrix.arch }}.txt
+          echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
         continue-on-error: true
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: bench-$$ {{ matrix.arch }}
-          path: bench-$$ {{ matrix.arch }}.txt
+          name: bench-${{ matrix.arch }}
+          path: bench-${{ matrix.arch }}.txt
 
   compare-arch-benchmarks:
     name: Compare ARM vs AMD Benchmarks
