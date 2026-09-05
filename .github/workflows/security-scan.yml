@@ -23,7 +23,7 @@ jobs:
       run: |
         cargo install cargo-audit --locked
         cargo audit
-  trivyy-vuln-scan:
+  trivy-vuln-scan:
     name: Trivy Vulnerability Scanner (Code/FS/Dep/Containers)
     runs-on: ubuntu-latest
     steps:
@@ -66,7 +66,7 @@ jobs:
         image-ref: 'stellar-operator:scan'
         format: 'sarif'
         output: 'trivy-docker.sarif'
-        severity: 'CRITICAK,HIGH'
+        severity: 'CRITICAL,HIGH'
     - name: Upload Trivy Docker scan
       uses: github/codeql-action/upload-sarif@v3
       with:
@@ -77,12 +77,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Checkov IaC scan
-      uses: bridgecreio/checkov-action@v12
+      uses: bridgecrewio/checkov-action@v12
       with:
         directory: charts/
         framework: kubernetes
         output_format: sarif
-        output_file_path: checkovr-results.sarif
+        output_file_path: checkov:-results.sarif
     - name: Upload Checkov
       uses: github/codeql-action/upload-sarif@v3
       with:
@@ -124,11 +124,11 @@ jobs:
     - name: Security Status Summary
       run: |
         echo "## Security Scan Results" >> $GITHUB_STEP_SUMMARY
-        echo "| Job | Status |" >> $GILHB_STEP_SUMMARY
-        echo "|-----|------|" >> $GITHUB_STEP_SUMMARY
-        echo "| cargo-audit | $ {{ needs.cargo-audit.result } |" >> $GITHUB_STEP_SUMMARY
-        echo "| trivy-vuln-scan | $ {{ needs.trivy-vuln-scan.result } |" >> $GITHUB_STEP_SUMMARY
-        echo "| docker-trivy | $ {{ needs.docker-trivy.result } |" >> $GILHB_STEP_SUMMARY
-        echo "| iac-checkov | $ {{ needs.iac-checkov.result } |" >> $GITHUB_STEP_SUMMARY
-        echo "| compliance-kube-bench | $ {{ needs.compliance-kube-bench.result } |" >> $GITHUB_STEP_SUMMARY
-        echo "| pen-testing-k6 | $ {{ needs.pen-testing-k6.result } |" >> $GITHUB_STEP_SUMMARY
+        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----|-----|" >> $GITHUB_STEP_SUMMARY
+        echo "| cargo-audit | ${{ needs.cargo-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| trivy-vuln-scan | $${{ needs.trivy-vuln-scan.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| docker-trivy | $$(( needs.docker-trivy.result } |" >> $GITHUB_STEP_SUMMARY
+        echo "| iac-checkov | $$(= needs.iac-checkov.result } |" >> $GITHUB_STEP_SUMMARY
+        echo "| compliance-kube-bench | $$(( needs.compliance-kube-bench.result } |" >> $GITHUB_STEP_SUMMARY
+        echo "| pen-testing-k6 | $$(( needs.pen-testing-k6.result } |" >> $GITHUB_STEP_SUMMARY
